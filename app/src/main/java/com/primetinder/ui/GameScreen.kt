@@ -110,6 +110,7 @@ fun GameScreen(
     modifier: Modifier = Modifier,
     onStart: () -> Unit = {},
     effects: Flow<GameEffect> = emptyFlow(),
+    gameOverAd: (@Composable () -> Unit)? = null,
 ) {
     val view = LocalView.current
 
@@ -304,6 +305,7 @@ fun GameScreen(
                 state = state,
                 onRestart = onRestart,
                 modifier = Modifier.fillMaxSize(),
+                bottomContent = gameOverAd,
             )
         }
     }

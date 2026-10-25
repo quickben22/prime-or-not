@@ -8,7 +8,9 @@ extend the run and add a point; the first wrong guess or timeout ends it.
 
 ```
 com.primetinder
-├── MainActivity.kt        edge-to-edge host, ViewModel + SoundPlayer wiring
+├── MainActivity.kt        edge-to-edge host, ViewModel + audio + ad consent
+├── ads/
+│   └── BannerAd.kt        anchored adaptive AdMob banner, retry screen only
 ├── audio/
 │   └── SoundPlayer.kt     SoundPool wrapper, loads res/raw samples
 ├── game/                  pure Kotlin, no Android imports — unit-testable
@@ -26,7 +28,7 @@ com.primetinder
     ├── GameViewModel.kt   round state machine, timer, effects, stats
     ├── GameScreen.kt      glass HUD, glow, card stack, +1, banner, confetti
     ├── SwipeCard.kt       drag physics, deal animation, shake, stamps, a11y
-    ├── GameOverPanel.kt   answer + run summary + restart
+    ├── GameOverPanel.kt   run summary, restart, optional bottom ad slot
     └── theme/Theme.kt     dark Material 3 scheme, tabular numeric styles
 ```
 
@@ -135,12 +137,38 @@ in-memory fake and never touch disk.
 - The game-over panel is a scrim + surface that springs in with a slight
   overshoot; it shows the answer, score/best, best streak, accuracy, fastest
   answer and "N more to beat your best". The restart button is the only way
-  out, so the final card's explanation stays readable.
+  out, so the final card's explanation stays readable. The panel is laid out in
+  a `weight(1f)` area so an optional banner slot can sit below it without ever
+  moving or overlapping the summary.
 - Sounds are synthesised WAVs in `res/raw` (`tools/generate_sfx.ps1` regenerates
   them): whoosh on a commit, ding that rises in pitch with the streak, low thud
   on a miss, click in the last two seconds, arpeggio on tier-up/new best/
   milestone. `SoundPlayer` skips playback when media volume is zero or the
   ringer is silent.
+
+## Ads
+
+Monetisation is limited to the retry screen. `Ready` and `Playing` render no ad
+composables at all, so a 5–7 s round is never interrupted or shortened.
+
+- `GameScreen(gameOverAd = …)` takes an optional slot and forwards it to
+  `GameOverPanel(bottomContent = …)`. Both default to `null`, which is why
+  previews and Compose tests never touch the network.
+- `BannerAd` requests an anchored adaptive banner sized from its own width
+  (≥ 320 dp), reserves that height while the request is in flight, and collapses
+  to zero on `onAdFailedToLoad`. The `AdView` is destroyed in `onRelease`.
+- The banner sits below the panel, outside its surface, full width. It is
+  deliberately **not** under the restart button: an ad adjacent to a control is
+  the accidental-click pattern AdMob policy warns about.
+- `MainActivity` runs the UMP consent flow (`requestConsentInfoUpdate` →
+  `loadAndShowConsentFormIfRequired`) and composes the slot only when
+  `canRequestAds()`. A failed consent update leaves ads off.
+- Configuration: `play-services-ads` 25.5.0, `user-messaging-platform` 4.0.0,
+  `INTERNET`, and the AdMob App ID via the `admobAppId` manifest placeholder.
+  The banner unit ID comes from `BuildConfig.ADMOB_BANNER_UNIT_ID`. Both default
+  to Google's test IDs and **must be replaced before a release build**.
+- Play Console work (not in the repo): data-safety declaration incl. `AD_ID`,
+  `app-ads.txt`, and the child-directed decision for this maths game.
 
 ## Testing
 
@@ -157,15 +185,16 @@ in-memory fake and never touch disk.
   answer (virtual time via `StandardTestDispatcher`). 35 tests total across the
   five unit suites.
 - `GameScreenTest` — instrumented Compose tests for the HUD, ready card,
-  game-over factorization and run summary, NEW BEST/streak/daily chips, and
-  right/left/short swipe gestures. 8 tests, run via
+  game-over factorization and run summary, NEW BEST/streak/daily chips, the
+  retry-only ad slot, and right/left/short swipe gestures. 9 tests, run via
   `connectedDebugAndroidTest`.
 
 ## Build
 
 AGP 9.1.1 with built-in Kotlin (no `kotlin-android` plugin), Kotlin 2.4.21,
 Gradle 9.4.1, Compose BOM 2026.09.00, compileSdk/targetSdk 37, minSdk 24,
-JVM target 17. Versions live in `gradle/libs.versions.toml`.
+JVM target 17, AdMob 25.5.0 + UMP 4.0.0. Versions live in
+`gradle/libs.versions.toml`.
 
 The AGP pin is deliberate: Android Studio **2025.3.3 Patch 1** (Panda 3) supports
 AGP 7.0–9.1, and AGP 9.1.1 is also Google's minimum for API 37.0 — so
@@ -185,5 +214,7 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio\jbr'
 
 - Adaptive launcher icon (`mipmap-anydpi-v26`) around the existing vector.
 - A mute toggle persisted alongside the score stats.
+- Replace the test AdMob App ID and banner unit with live values, then add
+  `app-ads.txt` and the Play Console data-safety entries.
 - Persist the in-progress run across process death if sessions should survive.
 - Per-tier leaderboards or a run history if Room becomes worth the dependency.

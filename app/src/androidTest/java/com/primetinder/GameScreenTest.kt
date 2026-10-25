@@ -1,5 +1,11 @@
 package com.primetinder
 
+import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -236,5 +242,43 @@ class GameScreenTest {
         compose.onNodeWithTag("summaryAccuracy").assertTextEquals("92%")
         compose.onNodeWithTag("summaryFastest").assertTextEquals("1.2s")
         compose.onNodeWithText("10 more to beat your best").assertIsDisplayed()
+    }
+
+    @Test
+    fun retryBannerIsOnlyShownOnTheGameOverScreen() {
+        var state by mutableStateOf(
+            GameUiState(
+                card = GameCard(97),
+                nextCard = GameCard(91),
+                remainingMs = 4_000,
+                timeLimitMs = 5_000,
+            ),
+        )
+
+        compose.setContent {
+            PrimeTinderTheme {
+                GameScreen(
+                    state = state,
+                    onSwipe = {},
+                    onRestart = {},
+                    gameOverAd = {
+                        Text(text = "AD", modifier = Modifier.testTag("retryAd"))
+                    },
+                )
+            }
+        }
+
+        compose.onNodeWithTag("retryAd").assertDoesNotExist()
+
+        compose.runOnIdle {
+            state = state.copy(
+                phase = GamePhase.GameOver,
+                gameOverReason = GameOverReason.TimeUp,
+                missedCard = GameCard(97),
+            )
+        }
+
+        compose.onNodeWithText("Try again").assertIsDisplayed()
+        compose.onNodeWithTag("retryAd").assertIsDisplayed()
     }
 }

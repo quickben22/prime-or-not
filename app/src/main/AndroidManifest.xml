@@ -1,5 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:allowBackup="true"
         android:icon="@drawable/ic_prime_tinder"
@@ -7,6 +9,12 @@
         android:roundIcon="@drawable/ic_prime_tinder"
         android:supportsRtl="true"
         android:theme="@style/Theme.PrimeTinder">
+
+        <!-- AdMob App ID. Test ID by default; see app/build.gradle.kts. -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="${admobAppId}" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true">
