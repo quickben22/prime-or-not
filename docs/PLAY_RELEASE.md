@@ -1,7 +1,9 @@
 # Prime or Not — Play release runbook and work log
 
-Status: **code, signing, artwork and public site are ready. The upload is waiting
-on two real AdMob IDs and one Play Console fingerprint check.**
+Status: **the signed upload bundle is built and verified.** Path:
+`app/build/outputs/bundle/release/app-release.aab`. Remaining: push both repos,
+enable GitHub Pages, confirm the Play upload-certificate fingerprint, then
+upload.
 
 Last updated: 25 October 2026.
 
@@ -97,53 +99,63 @@ the upload-certificate page or reset the upload key there.
 
 ---
 
-## 3. AdMob (blocking the upload)
+## 3. AdMob (configured)
 
-The code side is done; the account side needs two real IDs.
+The release bundle uses the real AdMob app and banner unit:
+
+| | |
+|---|---|
+| AdMob app | Prime Or Not (Android) — `ca-app-pub-3535032153893847~2009618845` |
+| Banner unit | Prime Banner — `ca-app-pub-3535032153893847/2509721149` |
+| Publisher | `pub-3535032153893847` |
+
+The app ID is the AdMob app originally created for BetsKeeper, renamed to
+Prime Or Not; same publisher, confirmed by the owner on 25 Oct 2026. The banner
+unit is new and is the only ad unit the game requests.
 
 `app/build.gradle.kts` reads:
 
 ```properties
 # local.properties — gitignored, not committed
-admob.appId=ca-app-pub-################~##########
-admob.bannerUnitId=ca-app-pub-################/##########
+admob.appId=ca-app-pub-3535032153893847~2009618845
+admob.bannerUnitId=ca-app-pub-3535032153893847/2509721149
 ```
 
 - Debug builds always use Google's sample IDs, so they work offline and can be
   screenshotted without serving real ads.
 - Release builds use the configured IDs. `validateReleaseAdIds` fails if either
   is blank or still contains Google's sample publisher `3940256099942544`.
+- `verifyReleaseBundle` also checks that the built bundle manifest contains the
+  real app ID and not the sample publisher.
 - `-PALLOW_TEST_ADS=true` is the only escape hatch and must never be uploaded.
 
-Create (or reuse) in AdMob:
+If the AdMob app or unit is ever recreated:
 
-1. **Apps → Add app → Android**, name `Prime or Not`, then copy the **App ID**
+1. **Apps → Add app → Android**, name `Prime or Not`, copy the **App ID**
    (`ca-app-pub-…~…`).
 2. **Ad units → Banner →** name `Prime or Not — game over`, copy the **unit ID**
    (`ca-app-pub-…/…`).
-3. Put both in `local.properties` as above. The publisher number (16 digits
-   after `ca-app-pub-`) must be identical in both IDs; the helper script checks
-   this.
+3. Put both in `local.properties`. The publisher number (16 digits after
+   `ca-app-pub-`) must be identical in both IDs; the helper script checks this.
 
 The banner is only requested on the game-over screen, after UMP consent allows
 ad requests. `Ready` and `Playing` render no ad slot at all.
 
-Once the IDs exist:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File tools/write_app_ads_txt.ps1
-```
-
-That writes `docs/site/app-ads.txt`:
+The helper has been run, and `docs/site/app-ads.txt` is committed:
 
 ```text
-google.com, pub-################, DIRECT, f08c47fec0942fa0
+google.com, pub-3535032153893847, DIRECT, f08c47fec0942fa0
 ```
 
-`app-ads.txt` must be served at `https://quickben22.github.io/app-ads.txt`, and
-the Play listing website must be `https://quickben22.github.io/`. AdMob crawls
-that file to authorise sellers. A wrong publisher ID is worse than no file, which
-is why no placeholder is committed.
+That file must be served at `https://quickben22.github.io/app-ads.txt`, and the
+Play listing website must be `https://quickben22.github.io/`. AdMob crawls it to
+authorise sellers.
+
+```powershell
+# after any AdMob change
+powershell -ExecutionPolicy Bypass -File tools/write_app_ads_txt.ps1
+Copy-Item docs\site\app-ads.txt ..\quickben22.github.io\ -Force
+```
 
 ---
 
@@ -176,14 +188,15 @@ live" banner and open:
 
 - `https://quickben22.github.io/`
 - `https://quickben22.github.io/privacy.html`
-- `https://quickben22.github.io/app-ads.txt` (after the AdMob ID exists)
+- `https://quickben22.github.io/app-ads.txt`
 
-`app-ads.txt` is generated later; copy it into the site folder and push again:
+`app-ads.txt` is already generated and committed in the site repo. Regenerate
+and push it only if the AdMob publisher or app changes:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File tools\write_app_ads_txt.ps1
 Copy-Item docs\site\app-ads.txt ..\quickben22.github.io\ -Force
-cd ..\quickben22.github.io; git add app-ads.txt; git commit -m "Add app-ads.txt"; git push
+cd ..\quickben22.github.io; git add app-ads.txt; git commit -m "Update app-ads.txt"; git push
 ```
 
 Keep the site copy in sync; there is no build step. After pushing, open the
@@ -291,7 +304,7 @@ $adb="$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
 & $adb -s emulator-5554 shell am instrument -w com.companyname.primeornot.test/androidx.test.runner.AndroidJUnitRunner
 ```
 
-Release bundle (needs real AdMob IDs and the upload key):
+Release bundle (needs the configured AdMob IDs and the upload key):
 
 ```powershell
 .\gradlew.bat verifyReleaseBundle
@@ -312,13 +325,16 @@ Local-only release smoke test with sample ads (never upload this):
 - `lintDebug`: **0 errors, 2 warnings** (`AndroidGradlePluginVersion` only —
   AGP is pinned deliberately, see `docs/ARCHITECTURE.md#build`).
 - `assembleDebug`: debug APK ≈ 17.9 MB, installs and runs on API 35.
-- `bundleRelease` without AdMob IDs: **fails at `validateReleaseAdIds`** with
-  `admob.appId is not set` / `admob.bannerUnitId is not set`. This is the
-  intended guard, not a broken build.
-- `verifyReleaseBundle -PALLOW_TEST_ADS=true`: **passed** — package
+- `bundleRelease` without AdMob IDs: **fails at `validateReleaseAdIds`**, as
+  designed. With the real IDs it builds.
+- `verifyReleaseBundle` with the real IDs: **passed** — package
   `com.companyname.primeornot`, version `2.0.0` (code 3), signer
-  `2B:41:8C:E6:…:20:84`, bundle 6.9 MiB. The artifact was then deleted because
-  it contains Google's sample ad IDs and must never be uploaded.
+  `2B:41:8C:E6:…:20:84`, 6,917 KiB. The bundle manifest contains
+  `ca-app-pub-3535032153893847~2009618845` and no sample publisher.
+  SHA-256 of the artifact:
+  `95B5FC3C38FDCD8A9CCE95AC7E82F1EE7E5D5C01226437F662D8E8FC0C41968F`.
+- `verifyReleaseBundle -PALLOW_TEST_ADS=true` (used earlier to prove the signing
+  path before the IDs existed): also passed; that test-ad artifact was deleted.
 - `assembleDebugAndroidTest`: builds; `am instrument` on `emulator-5554`
   (API 35) ran **10/10 `GameScreenTest` cases, OK**, in 16 s.
 
@@ -334,11 +350,21 @@ disabled for the game-over shots so the banner never appears in a store image.
 ```powershell
 $adb="$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
 & $adb shell wm size 1080x1920
-& $adb shell settings put global airplane_mode_on 1
+& $adb shell svc wifi disable
+& $adb shell svc data disable
+# status bar: demo mode with clock 09:41 and a full battery
+& $adb shell settings put global sysui_demo_allowed 1
+& $adb shell am broadcast -a com.android.systemui.demo -e command enter
+& $adb shell am broadcast -a com.android.systemui.demo -e command clock -e hhmm 0941
 # ... play to the required state, then:
-& $adb exec-out screencap -p > docs\store\screenshots\phone-02-playing.png
+& $adb shell screencap -p /sdcard/shot.png
+& $adb pull /sdcard/shot.png docs\store\screenshots\phone-02-playing.png
+& $adb shell rm /sdcard/shot.png
+# restore
+& $adb shell am broadcast -a com.android.systemui.demo -e command exit
 & $adb shell wm size reset
-& $adb shell settings put global airplane_mode_on 0
+& $adb shell svc wifi enable
+& $adb shell svc data enable
 ```
 
 Files are listed in `docs/store/listing.md` with the order to upload them.
@@ -437,25 +463,26 @@ information — the app requests none of those permissions.
 
 ## 9. Remaining work
 
-### Needs a human decision or account access
+### Needs account access (cannot be done from this machine)
 
-1. **Real AdMob app ID and banner unit ID** → add to `local.properties`, then
-   run `tools/write_app_ads_txt.ps1`. Without these, `bundleRelease` correctly
-   refuses to build.
-2. **Confirm the upload-certificate fingerprint** in Play Console (§2).
-3. **Confirm the contact email.** The site and policy currently use
-   `quickben22@gmail.com`; change it in `docs/site/index.html`,
-   `docs/site/privacy.html`, `docs/store/listing.md` and the Play listing if a
-   different address should be public.
+1. **Push both repos.** They are committed locally, but this machine has no
+   saved GitHub credential (`git ls-remote` returns `could not read Username`).
+   Commands are in §4.
+2. **Enable GitHub Pages** on `quickben22/quickben22.github.io` after the push:
+   Settings → Pages → Deploy from a branch → `main` / `(root)`.
+3. **Confirm the upload-certificate fingerprint** in Play Console (§2).
+4. **Upload `app-release.aab`** to Internal testing, smoke-test, then Closed
+   testing, then production (§8).
 
-### Needs the AAB
+### After the first Play install
 
-4. Upload version 3 to Internal testing, smoke-test, then Closed testing, then
-   production.
-5. Add `app-ads.txt` to the site repo after the publisher ID is known and verify
-   `https://quickben22.github.io/app-ads.txt` returns the line.
-6. In AdMob, link the app to the Play listing (App settings → App store) so
+5. In AdMob, link the app to the Play listing (App settings → App store) so
    AdMob can verify the store presence.
+6. With networking on, play one round, fail it, and confirm the game-over banner
+   fills. A new ad unit can take up to an hour to start serving.
+7. Verify `https://quickben22.github.io/app-ads.txt` returns
+   `google.com, pub-3535032153893847, DIRECT, f08c47fec0942fa0` once Pages is
+   live.
 
 ### Optional follow-ups
 
@@ -518,6 +545,19 @@ information — the app requests none of those permissions.
 
 - This file, `docs/store/listing.md`, and updates to `README.md` and
   `docs/ARCHITECTURE.md`.
+
+**AdMob and final bundle**
+
+- Configured the real app ID `ca-app-pub-3535032153893847~2009618845` (the
+  AdMob app from the old BetsKeeper project, renamed to Prime Or Not, same
+  publisher, confirmed by the owner) and banner unit
+  `ca-app-pub-3535032153893847/2509721149` ("Prime Banner").
+- Generated `docs/site/app-ads.txt` with
+  `google.com, pub-3535032153893847, DIRECT, f08c47fec0942fa0`; committed it in
+  the source repo and the site repo.
+- `verifyReleaseBundle` with the real IDs passed. The uploadable AAB is at
+  `app/build/outputs/bundle/release/app-release.aab` (6,917 KiB, SHA-256
+  `95B5FC3C38FDCD8A9CCE95AC7E82F1EE7E5D5C01226437F662D8E8FC0C41968F`).
 
 **Build and verification**
 

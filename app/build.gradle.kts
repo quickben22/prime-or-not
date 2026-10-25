@@ -242,6 +242,7 @@ val verifyReleaseBundle = tasks.register("verifyReleaseBundle") {
     val bundle = layout.buildDirectory.file("outputs/bundle/release/app-release.aab")
     val expectedSha256 =
         "2B:41:8C:E6:FE:AE:83:09:8B:71:8A:0F:E2:87:02:86:5A:F5:BC:CB:3E:EA:00:41:FE:DA:95:60:F7:21:20:84"
+    val expectedAdmobAppId = if (allowTestAdsInRelease) admobTestAppId else releaseAdmobAppId
 
     doLast {
         val aab = bundle.get().asFile
@@ -251,10 +252,13 @@ val verifyReleaseBundle = tasks.register("verifyReleaseBundle") {
             val entry = zip.getEntry("base/manifest/AndroidManifest.xml")
                 ?: throw GradleException("Bundle has no base manifest: $aab")
             val manifest = zip.getInputStream(entry).readBytes().toString(Charsets.ISO_8859_1)
-            listOf("com.companyname.primeornot", appVersionName).forEach { expected ->
+            listOf("com.companyname.primeornot", appVersionName, expectedAdmobAppId).forEach { expected ->
                 if (!manifest.contains(expected)) {
                     throw GradleException("Bundle manifest does not contain '$expected'.")
                 }
+            }
+            if (!allowTestAdsInRelease && manifest.contains(admobTestPublisherId)) {
+                throw GradleException("Bundle manifest still contains Google's sample AdMob publisher.")
             }
         }
 
