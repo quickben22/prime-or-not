@@ -1,9 +1,10 @@
 # Prime or Not — Play release runbook and work log
 
-Status: **the signed upload bundle is built and verified.** Path:
-`app/build/outputs/bundle/release/app-release.aab`. Remaining: push both repos,
-enable GitHub Pages, confirm the Play upload-certificate fingerprint, then
-upload.
+Status: **the signed upload bundle is built and verified, and the source repo
+and public privacy site are published.** Path:
+`app/build/outputs/bundle/release/app-release.aab`. The only remaining work is
+inside Play Console: confirm the upload-certificate fingerprint, upload the
+bundle, and complete the store listing and policy forms.
 
 Last updated: 25 October 2026.
 
@@ -174,44 +175,47 @@ The policy covers: local-only scores, the AdMob banner, approximate location /
 app interactions / diagnostics / device identifiers, EEA-UK consent via UMP and
 how to withdraw it, children, retention, deletion and contact.
 
-To publish:
+The site is live. The repo is public, Pages is enabled (**Deploy from a branch →
+`main` / `/ (root)`**), the build for `12087ad` completed, and all three URLs
+return 200:
 
-```powershell
-# already cloned, populated and committed at ..\quickben22.github.io
-cd ..\quickben22.github.io
-git push -u origin main
+```text
+https://quickben22.github.io/                 200  (game page)
+https://quickben22.github.io/privacy.html     200  (privacy policy)
+https://quickben22.github.io/app-ads.txt      200  google.com, pub-3535032153893847, DIRECT, f08c47fec0942fa0
 ```
 
-Then **Settings → Pages → Build and deployment → Source: Deploy from a
-branch → Branch: `main` / `/ (root)` → Save**. Wait for the green "Your site is
-live" banner and open:
-
-- `https://quickben22.github.io/`
-- `https://quickben22.github.io/privacy.html`
-- `https://quickben22.github.io/app-ads.txt`
-
-`app-ads.txt` is already generated and committed in the site repo. Regenerate
-and push it only if the AdMob publisher or app changes:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File tools\write_app_ads_txt.ps1
-Copy-Item docs\site\app-ads.txt ..\quickben22.github.io\ -Force
-cd ..\quickben22.github.io; git add app-ads.txt; git commit -m "Update app-ads.txt"; git push
-```
-
-Keep the site copy in sync; there is no build step. After pushing, open the
-three URLs and confirm they return 200 before pasting the privacy URL into Play.
-
-### Push the source repo
+To republish after a change, copy the site sources, commit and push:
 
 ```powershell
 cd "C:\Users\armin\Documents\Prime or not"
-git push -u origin main
+Copy-Item docs\site\* ..\quickben22.github.io\ -Force
+cd ..\quickben22.github.io
+git add -A; git commit -m "Update site"; git push
 ```
 
-Both repos were committed locally on 25 October 2026 but not pushed: this
-machine has no saved GitHub credential (`git ls-remote` returns
-`could not read Username`), so the push needs your interactive login.
+GitHub rebuilds Pages automatically; no settings change is needed again. If the
+AdMob publisher or app changes, regenerate `app-ads.txt` first:
+
+```powershell
+cd "C:\Users\armin\Documents\Prime or not"
+powershell -ExecutionPolicy Bypass -File tools\write_app_ads_txt.ps1
+```
+
+### Repositories
+
+| Repo | Visibility | Branch | Pushed |
+|---|---|---|---|
+| `quickben22/prime-or-not` | private | `main` | yes, 25 Oct 2026 |
+| `quickben22/quickben22.github.io` | public | `main` | yes, 25 Oct 2026 |
+
+GitHub credentials are stored in Windows Credential Manager for user
+`quickben22`, so `git push` no longer prompts. To publish source changes:
+
+```powershell
+cd "C:\Users\armin\Documents\Prime or not"
+git push
+```
 
 ---
 
@@ -464,26 +468,22 @@ information — the app requests none of those permissions.
 
 ## 9. Remaining work
 
-### Needs account access (cannot be done from this machine)
+### Needs Play Console access (cannot be done from this machine)
 
-1. **Push both repos.** They are committed locally, but this machine has no
-   saved GitHub credential (`git ls-remote` returns `could not read Username`).
-   Commands are in §4.
-2. **Enable GitHub Pages** on `quickben22/quickben22.github.io` after the push:
-   Settings → Pages → Deploy from a branch → `main` / `(root)`.
-3. **Confirm the upload-certificate fingerprint** in Play Console (§2).
-4. **Upload `app-release.aab`** to Internal testing, smoke-test, then Closed
+1. **Confirm the upload-certificate fingerprint** in Play Console (§2).
+2. **Upload `app-release.aab`** to Internal testing, smoke-test, then Closed
    testing, then production (§8).
+3. **Complete the store listing and App content forms** (§8).
+
+Both repos are pushed and the site is live, so the privacy-policy and website
+URLs are safe to paste into Play now.
 
 ### After the first Play install
 
-5. In AdMob, link the app to the Play listing (App settings → App store) so
+4. In AdMob, link the app to the Play listing (App settings → App store) so
    AdMob can verify the store presence.
-6. With networking on, play one round, fail it, and confirm the game-over banner
+5. With networking on, play one round, fail it, and confirm the game-over banner
    fills. A new ad unit can take up to an hour to start serving.
-7. Verify `https://quickben22.github.io/app-ads.txt` returns
-   `google.com, pub-3535032153893847, DIRECT, f08c47fec0942fa0` once Pages is
-   live.
 
 ### Optional follow-ups
 
@@ -559,6 +559,20 @@ information — the app requests none of those permissions.
 - `verifyReleaseBundle` with the real IDs passed. The uploadable AAB is at
   `app/build/outputs/bundle/release/app-release.aab` (6,917 KiB, SHA-256
   `95B5FC3C38FDCD8A9CCE95AC7E82F1EE7E5D5C01226437F662D8E8FC0C41968F`).
+
+**GitHub publish**
+
+- GitHub credentials were added to this machine (Windows Credential Manager,
+  user `quickben22`), so `git push` works without a prompt.
+- Pushed the source repo `quickben22/prime-or-not` (`main`, private) and the
+  site repo `quickben22/quickben22.github.io` (`main`, public).
+- GitHub Pages was already enabled on the site repo; the build for `12087ad`
+  completed in 34 s. Verified `https://quickben22.github.io/`,
+  `/privacy.html` and `/app-ads.txt` all return 200, and `app-ads.txt` serves
+  `google.com, pub-3535032153893847, DIRECT, f08c47fec0942fa0`.
+- Confirmed via the GitHub API that the source repo is private, the site repo
+  is public, and both default to `main`.
+
 
 **Build and verification**
 
