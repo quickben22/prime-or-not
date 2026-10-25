@@ -110,7 +110,9 @@ in-memory fake and never touch disk.
 ## UI
 
 - In `Ready` the stack is replaced by a face-down start card (accent `P`,
-  "TAP TO START", direction hints); tapping it calls `begin()`.
+  "TAP TO START", direction hints); tapping it calls `begin()`. When UMP says
+  privacy options are required, a muted "Privacy options" text button under the
+  swipe hint reopens the consent form; it is absent everywhere else.
 - The card stack is three deep: `state.card` on top, `state.nextCard` peeking above
   it at 0.96 scale, and a blank surface at 0.92, each nudged up a few dp so the
   deck reads as endless.
@@ -139,7 +141,8 @@ in-memory fake and never touch disk.
   answer and "N more to beat your best". The restart button is the only way
   out, so the final card's explanation stays readable. The panel is laid out in
   a `weight(1f)` area so an optional banner slot can sit below it without ever
-  moving or overlapping the summary.
+  moving or overlapping the summary; its content is `verticalScroll`-able, so a
+  short landscape viewport or a large font scale clips nothing.
 - Sounds are synthesised WAVs in `res/raw` (`tools/generate_sfx.ps1` regenerates
   them): whoosh on a commit, ding that rises in pitch with the streak, low thud
   on a miss, click in the last two seconds, arpeggio on tier-up/new best/
@@ -160,13 +163,27 @@ composables at all, so a 5–7 s round is never interrupted or shortened.
 - The banner sits below the panel, outside its surface, full width. It is
   deliberately **not** under the restart button: an ad adjacent to a control is
   the accidental-click pattern AdMob policy warns about.
-- `MainActivity` runs the UMP consent flow (`requestConsentInfoUpdate` →
-  `loadAndShowConsentFormIfRequired`) and composes the slot only when
-  `canRequestAds()`. A failed consent update leaves ads off.
+- `MainActivity` runs the UMP consent flow in the documented order: read
+  `canRequestAds()` (a stored decision counts immediately),
+  `requestConsentInfoUpdate`, then `loadAndShowConsentFormIfRequired`.
+  `MobileAds.initialize` is called at most once, and only after
+  `canRequestAds()` is true, so the SDK stays dormant when the user declines.
+  A failed consent update re-reads the last known decision instead of silently
+  disabling ads for the session.
+- When `privacyOptionsRequirementStatus` is `REQUIRED` (EEA/UK), the ready
+  screen shows a small "Privacy options" button that reopens the UMP form via
+  `showPrivacyOptionsForm`; consent state — and the banner slot — is
+  re-evaluated when the form is dismissed.
 - Configuration: `play-services-ads` 25.5.0, `user-messaging-platform` 4.0.0,
   `INTERNET`, and the AdMob App ID via the `admobAppId` manifest placeholder.
-  The banner unit ID comes from `BuildConfig.ADMOB_BANNER_UNIT_ID`. Both default
-  to Google's test IDs and **must be replaced before a release build**.
+  The banner unit ID comes from `BuildConfig.ADMOB_BANNER_UNIT_ID`. IDs are set
+  per build type: debug uses Google's samples, release reads
+  `admob.appId`/`admob.bannerUnitId` from `local.properties` (or
+  `ADMOB_APP_ID`/`ADMOB_BANNER_UNIT_ID` Gradle properties or environment).
+- `validateReleaseAdIds` fails a release build when either ID is blank or still
+  contains Google's sample publisher `3940256099942544`. There is no silent
+  fallback; `-PALLOW_TEST_ADS=true` opts into a test-ID release build for local
+  checks only.
 - Play Console work (not in the repo): data-safety declaration incl. `AD_ID`,
   `app-ads.txt`, and the child-directed decision for this maths game.
 
@@ -186,8 +203,9 @@ composables at all, so a 5–7 s round is never interrupted or shortened.
   five unit suites.
 - `GameScreenTest` — instrumented Compose tests for the HUD, ready card,
   game-over factorization and run summary, NEW BEST/streak/daily chips, the
-  retry-only ad slot, and right/left/short swipe gestures. 9 tests, run via
-  `connectedDebugAndroidTest`.
+  retry-only ad slot, the conditional privacy-options button, and
+  right/left/short swipe gestures. 10 tests, run via `connectedDebugAndroidTest`
+  or `am instrument` against a single device.
 
 ## Build
 
@@ -210,11 +228,18 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio\jbr'
 .\gradlew.bat testDebugUnitTest lintDebug assembleDebug
 ```
 
+Release ad IDs are read from `local.properties` (`admob.appId`,
+`admob.bannerUnitId`) or `ADMOB_APP_ID`/`ADMOB_BANNER_UNIT_ID` properties or
+environment variables. `assembleRelease` fails via `validateReleaseAdIds` when
+they are missing or still test IDs; `-PALLOW_TEST_ADS=true` is the local-only
+escape hatch. See [`README.md`](../README.md#admob-setup).
+
 ## Possible next steps
 
 - Adaptive launcher icon (`mipmap-anydpi-v26`) around the existing vector.
 - A mute toggle persisted alongside the score stats.
-- Replace the test AdMob App ID and banner unit with live values, then add
-  `app-ads.txt` and the Play Console data-safety entries.
+- Add a release signing config (the APK is unsigned today), set the real AdMob
+  IDs via `local.properties`, then add `app-ads.txt` and the Play Console
+  data-safety entries.
 - Persist the in-progress run across process death if sessions should survive.
 - Per-tier leaderboards or a run history if Room becomes worth the dependency.

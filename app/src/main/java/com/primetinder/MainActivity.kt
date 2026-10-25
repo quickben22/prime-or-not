@@ -15,6 +15,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.android.gms.ads.MobileAds
+import com.google.android.ump.ConsentInformation
 import com.google.android.ump.ConsentRequestParameters
 import com.google.android.ump.UserMessagingPlatform
 import com.primetinder.ads.BannerAd
@@ -33,6 +34,11 @@ class MainActivity : ComponentActivity() {
     /** Set by the UMP callbacks; the retry banner is composed only when true. */
     private var canRequestAds by mutableStateOf(false)
 
+    /** True while Google requires an entry point for changing consent. */
+    private var privacyOptionsRequired by mutableStateOf(false)
+
+    private var adsInitialized = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge(
@@ -40,7 +46,6 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
         )
         soundPlayer = SoundPlayer(this)
-        MobileAds.initialize(this)
         requestAdsConsent()
 
         setContent {
@@ -73,36 +78,62 @@ class MainActivity : ComponentActivity() {
                     } else {
                         null
                     },
+                    onPrivacyOptions = if (privacyOptionsRequired) {
+                        ::showPrivacyOptions
+                    } else {
+                        null
+                    },
                 )
             }
         }
     }
 
     /**
-     * AdMob requires a consent signal before the first ad request. The current
-     * state covers most regions; otherwise the UMP flow runs and re-checks.
-     * A failed update leaves banners off rather than risk a bad request.
+     * Consent comes first: UMP decides whether ad requests are legal, and the
+     * Mobile Ads SDK is initialised only once that answer is yes. A stored
+     * decision from a previous session is honoured immediately, and a failed
+     * update re-reads it instead of silently disabling ads for the session.
      */
     private fun requestAdsConsent() {
         val consentInformation = UserMessagingPlatform.getConsentInformation(this)
-        if (consentInformation.canRequestAds()) {
-            canRequestAds = true
-        }
+        updateConsentState(consentInformation)
 
         consentInformation.requestConsentInfoUpdate(
             this,
             ConsentRequestParameters.Builder().build(),
             {
                 UserMessagingPlatform.loadAndShowConsentFormIfRequired(this) {
-                    if (consentInformation.canRequestAds()) {
-                        canRequestAds = true
-                    }
+                    updateConsentState(consentInformation)
                 }
             },
             {
-                // No consent information: keep the retry banner hidden.
+                // Keep the last known decision when the update fails.
+                updateConsentState(consentInformation)
             },
         )
+    }
+
+    private fun updateConsentState(consentInformation: ConsentInformation) {
+        canRequestAds = consentInformation.canRequestAds()
+        privacyOptionsRequired =
+            consentInformation.privacyOptionsRequirementStatus ==
+                ConsentInformation.PrivacyOptionsRequirementStatus.REQUIRED
+        if (canRequestAds) {
+            initializeAdsIfAllowed()
+        }
+    }
+
+    private fun initializeAdsIfAllowed() {
+        if (adsInitialized) return
+        adsInitialized = true
+        MobileAds.initialize(this)
+    }
+
+    /** Reopens the UMP form so consent can be changed or withdrawn later. */
+    private fun showPrivacyOptions() {
+        UserMessagingPlatform.showPrivacyOptionsForm(this) {
+            updateConsentState(UserMessagingPlatform.getConsentInformation(this))
+        }
     }
 
     override fun onResume() {

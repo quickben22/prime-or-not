@@ -8,6 +8,7 @@
     <string name="not_prime_label">NOT PRIME</string>
     <string name="tap_to_start">TAP TO START</string>
     <string name="tap_to_start_hint">Five seconds on the clock</string>
+    <string name="privacy_options">Privacy options</string>
 
     <string name="game_over_wrong_title">Wrong guess</string>
     <string name="game_over_timeout_title">Out of time</string>

@@ -43,6 +43,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -111,6 +112,7 @@ fun GameScreen(
     onStart: () -> Unit = {},
     effects: Flow<GameEffect> = emptyFlow(),
     gameOverAd: (@Composable () -> Unit)? = null,
+    onPrivacyOptions: (() -> Unit)? = null,
 ) {
     val view = LocalView.current
 
@@ -253,7 +255,20 @@ fun GameScreen(
                 color = PrimeTextMuted,
                 textAlign = TextAlign.Center,
             )
-            Spacer(Modifier.height(14.dp))
+            if (state.phase == GamePhase.Ready && onPrivacyOptions != null) {
+                TextButton(
+                    onClick = onPrivacyOptions,
+                    modifier = Modifier.testTag("privacyOptions"),
+                ) {
+                    Text(
+                        text = stringResource(R.string.privacy_options),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = PrimeTextMuted,
+                    )
+                }
+            } else {
+                Spacer(Modifier.height(14.dp))
+            }
         }
 
         ConfettiBurst(trigger = confettiTrigger, modifier = Modifier.matchParentSize())

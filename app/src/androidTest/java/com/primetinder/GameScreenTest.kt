@@ -281,4 +281,40 @@ class GameScreenTest {
         compose.onNodeWithText("Try again").assertIsDisplayed()
         compose.onNodeWithTag("retryAd").assertIsDisplayed()
     }
+
+    @Test
+    fun privacyOptionsButtonIsOnlyShownOnTheReadyScreenWhenProvided() {
+        var onPrivacyOptions by mutableStateOf<(() -> Unit)?>(null)
+        var phase by mutableStateOf(GamePhase.Ready)
+        var clicked = false
+
+        compose.setContent {
+            PrimeTinderTheme {
+                GameScreen(
+                    state = GameUiState(
+                        phase = phase,
+                        card = GameCard(97),
+                        nextCard = GameCard(91),
+                        remainingMs = 5_000,
+                        timeLimitMs = 5_000,
+                    ),
+                    onSwipe = {},
+                    onRestart = {},
+                    onPrivacyOptions = onPrivacyOptions,
+                )
+            }
+        }
+
+        compose.onNodeWithTag("privacyOptions").assertDoesNotExist()
+
+        compose.runOnIdle {
+            onPrivacyOptions = { clicked = true }
+        }
+        compose.onNodeWithTag("privacyOptions").assertIsDisplayed()
+        compose.onNodeWithTag("privacyOptions").performClick()
+        compose.runOnIdle { assertTrue(clicked) }
+
+        compose.runOnIdle { phase = GamePhase.Playing }
+        compose.onNodeWithTag("privacyOptions").assertDoesNotExist()
+    }
 }
