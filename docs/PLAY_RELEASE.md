@@ -330,8 +330,9 @@ Local-only release smoke test with sample ads (never upload this):
 - `verifyReleaseBundle` with the real IDs: **passed** — package
   `com.companyname.primeornot`, version `2.0.0` (code 3), signer
   `2B:41:8C:E6:…:20:84`, 6,917 KiB. The bundle manifest contains
-  `ca-app-pub-3535032153893847~2009618845` and no sample publisher.
-  SHA-256 of the artifact:
+  `ca-app-pub-3535032153893847~2009618845`, `classes.dex` contains the banner
+  unit `2509721149`, and Google's sample publisher `3940256099942544` appears
+  nowhere. SHA-256 of the artifact:
   `95B5FC3C38FDCD8A9CCE95AC7E82F1EE7E5D5C01226437F662D8E8FC0C41968F`.
 - `verifyReleaseBundle -PALLOW_TEST_ADS=true` (used earlier to prove the signing
   path before the IDs existed): also passed; that test-ad artifact was deleted.
