@@ -1,12 +1,12 @@
 # Prime or Not — Play release runbook and work log
 
-Status: **the signed upload bundle is built and verified, and the source repo
-and public privacy site are published.** Path:
-`app/build/outputs/bundle/release/app-release.aab`. The only remaining work is
-inside Play Console: confirm the upload-certificate fingerprint, upload the
-bundle, and complete the store listing and policy forms.
+Status: **ready to upload.** The signed bundle is built and verified, the upload
+certificate is confirmed, both repos are pushed, and the privacy site is live.
+The next action is uploading `app/build/outputs/bundle/release/app-release.aab`
+to Internal testing (§8). After that: smoke test, Closed testing, Production,
+and the App content forms.
 
-Last updated: 25 October 2026.
+Last updated: 26 October 2026.
 
 This file records everything that was changed to turn the local prototype into a
 Play submission, why each change was made, and the exact steps left for a human
@@ -76,19 +76,17 @@ holds `release.storeFile` and `release.keyAlias`.
 Losing the upload key does not lose the app (Play App Signing holds the app
 signing key), but it forces an upload-key reset before the next release.
 
-### Confirm once in Play Console
+### Confirmed in Play Console
 
-Open **PRIME OR NOT → Test and release → Setup → App signing** and check that:
+Checked on 26 October 2026:
 
 1. Play App Signing is **enabled**.
 2. The **upload certificate** SHA-256 is exactly
    `2B:41:8C:E6:FE:AE:83:09:8B:71:8A:0F:E2:87:02:86:5A:F5:BC:CB:3E:EA:00:41:FE:DA:95:60:F7:21:20:84`.
 
-Do not use the *app signing certificate* fingerprint for this check — Google
-holds that key and it is expected to differ.
-
-If the fingerprint differs, stop: do not upload. Either import this key under
-the upload-certificate page or reset the upload key there.
+The app-signing certificate fingerprint is different and is expected to be —
+Google holds that key. If the upload certificate is ever reset or the key is
+recreated, repeat this check before uploading.
 
 ### Build guard
 
@@ -439,19 +437,43 @@ information — the app requests none of those permissions.
 
 ### Test and release
 
-1. **Internal testing → Create new release**, upload `app-release.aab`, release
-   notes "2.0.0 — native Compose rewrite, new icon, privacy policy."
-2. Add yourself as a tester, install from the opt-in link, check the start
-   screen, a few swipes, a game over and the retry screen on API 35 and, if
-   available, API 24.
-3. **Closed testing → Alpha → Create new release**, same bundle, roll out to the
-   existing testers.
-4. When production is unlocked: **Production → Create new release**, same
-   bundle, staged rollout (e.g. 20% → 100%).
-5. If Play shows **Apply for production access** instead, complete that form
-   (it appears for apps that have never had a production release). The 12-tester
-   rule applies only to personal developer accounts created after
-   13 November 2023; this account predates it.
+**Internal testing upload — exact steps**
+
+1. **Test and release → Testing → Internal testing → Create new release.**
+2. Keep the existing **Play App Signing** setup; do not create a new key.
+3. Under **App bundles → Upload**, select
+   `C:\Users\armin\Documents\Prime or not\app\build\outputs\bundle\release\app-release.aab`
+   (7,083,334 bytes, SHA-256
+   `95B5FC3C38FDCD8A9CCE95AC7E82F1EE7E5D5C01226437F662D8E8FC0C41968F`).
+   Upload the AAB, never an APK, and never a build made with
+   `-PALLOW_TEST_ADS=true`.
+4. Wait for “bundle uploaded successfully”; the release name fills in as
+   **2.0.0 (3)**. Paste the release notes below.
+5. Resolve any **errors** Play reports. Warnings can be reviewed and accepted.
+6. **Save → Review release**, confirm version **3 (2.0.0)** and the target
+   countries, then **Start rollout to Internal testing → Rollout**.
+7. If **Managed publishing** is enabled, go to **Publishing overview** and click
+   **Publish changes**. Internal testing normally goes live in minutes.
+8. **Testers** tab: put your Google account in the list, copy the opt-in URL,
+   open it on the phone, accept and install. Confirm the installed version is
+   **2.0.0**.
+9. Smoke-test: start screen, several swipes, one wrong answer, one timeout,
+   retry, then force-stop and confirm the best score persisted. Test on API 35
+   and, if available, API 24.
+
+**Promotion**
+
+10. **Closed testing → Alpha → Create new release → Add from library**, select
+    `2.0.0 (3)`, and roll out to the existing testers.
+11. When production is unlocked: **Production → Create new release**, same
+    bundle, staged rollout (e.g. 20% → 100%).
+12. If Play shows **Apply for production access** instead, complete that form
+    (it appears for apps that have never had a production release). The
+    12-tester rule applies only to personal developer accounts created after
+    13 November 2023; this account predates it.
+
+After the upload, **App bundle explorer → version 3** shows the app-signing
+certificate, which intentionally differs from the upload certificate.
 
 ### Release notes (copy/paste)
 
@@ -468,22 +490,28 @@ information — the app requests none of those permissions.
 
 ## 9. Remaining work
 
-### Needs Play Console access (cannot be done from this machine)
+### Resume here (Play Console only)
 
-1. **Confirm the upload-certificate fingerprint** in Play Console (§2).
-2. **Upload `app-release.aab`** to Internal testing, smoke-test, then Closed
-   testing, then production (§8).
-3. **Complete the store listing and App content forms** (§8).
+Fingerprint confirmed, repos pushed, site live. What is left:
+
+1. **Upload `app-release.aab`** — Internal testing → Create new release →
+   upload the AAB → release notes `2.0.0` (§8).
+2. **Smoke-test** the installed build (start, swipes, wrong answer, timeout,
+   retry, score persistence).
+3. **Promote** the same bundle to Closed testing → Alpha, then Production.
+4. **Complete the store listing and App content forms** (§8).
+5. **After the first install:** link the AdMob app to the Play listing and
+   confirm the game-over banner fills.
 
 Both repos are pushed and the site is live, so the privacy-policy and website
 URLs are safe to paste into Play now.
 
 ### After the first Play install
 
-4. In AdMob, link the app to the Play listing (App settings → App store) so
-   AdMob can verify the store presence.
-5. With networking on, play one round, fail it, and confirm the game-over banner
-   fills. A new ad unit can take up to an hour to start serving.
+- In AdMob, link the app to the Play listing (App settings → App store) so
+  AdMob can verify the store presence.
+- With networking on, play one round, fail it, and confirm the game-over banner
+  fills. A new ad unit can take up to an hour to start serving.
 
 ### Optional follow-ups
 
@@ -499,6 +527,17 @@ URLs are safe to paste into Play now.
 ---
 
 ## 10. Work log
+
+### 26 October 2026
+
+- Owner confirmed the Play upload certificate matches
+  `2B:41:8C:E6:…:20:84` and Play App Signing is enabled (§2).
+- AAB re-checked on disk: unchanged, 7,083,334 bytes, SHA-256
+  `95B5FC3C38FDCD8A9CCE95AC7E82F1EE7E5D5C01226437F662D8E8FC0C41968F`.
+- Wrote the click-by-click internal-testing upload procedure and the tester
+  opt-in steps into §8.
+- Paused before the upload. Resume at §9 “Resume here”; nothing else is blocked
+  locally.
 
 ### 25 October 2026
 
