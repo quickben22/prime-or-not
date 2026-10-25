@@ -118,11 +118,15 @@ constructor dependency, so tests use an in-memory fake and never touch disk.
 
 ## Build
 
-AGP 9.2.1 with built-in Kotlin (no `kotlin-android` plugin), Kotlin 2.4.21,
+AGP 9.1.1 with built-in Kotlin (no `kotlin-android` plugin), Kotlin 2.4.21,
 Gradle 9.4.1, Compose BOM 2026.09.00, compileSdk/targetSdk 37, minSdk 24,
-JVM target 17. Versions live in `gradle/libs.versions.toml`. The installed
-Android Studio 2025.3.4 supports AGP ≤ 9.2; upgrading Studio allows moving to
-AGP 9.4 in one line.
+JVM target 17. Versions live in `gradle/libs.versions.toml`.
+
+The AGP pin is deliberate: Android Studio **2025.3.3 Patch 1** (Panda 3) supports
+AGP 7.0–9.1, and AGP 9.1.1 is also Google's minimum for API 37.0 — so
+Studio 2025.3.3 Patch 1 + AGP 9.1.1 + compileSdk 37 is a supported combination.
+AGP 9.2+ requires Studio 2025.3.4 (Panda 4); upgrading the IDE would be the only
+way to raise the plugin. AGP 9.1.1 needs Gradle ≥ 9.3.1, hence 9.4.1.
 
 Command-line builds need a JDK 17+; the machine's default `java` is 11, so use
 the Studio JBR:
