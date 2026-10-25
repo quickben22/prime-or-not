@@ -26,4 +26,22 @@
     <string name="card_description">Number %1$d. Swipe right if it is prime, left if it is not.</string>
     <string name="action_prime">Guess prime</string>
     <string name="action_not_prime">Guess not prime</string>
+
+    <!-- Pass 2: feedback, progression and run summary -->
+    <string name="plus_one">+1</string>
+    <string name="streak_chip">%1$d× STREAK</string>
+    <string name="new_best_label">NEW BEST</string>
+    <string name="daily_streak_days">DAY %1$d</string>
+    <string name="banner_level_up">LEVEL UP</string>
+    <string name="banner_milestone">%1$d CORRECT</string>
+    <string name="tier_rookie">ROOKIE</string>
+    <string name="tier_factor_hunter">FACTOR HUNTER</string>
+    <string name="tier_prime_time">PRIME TIME</string>
+    <string name="best_streak_label">BEST STREAK</string>
+    <string name="accuracy_label">ACCURACY</string>
+    <string name="fastest_label">FASTEST</string>
+    <plurals name="cards_to_beat_best">
+        <item quantity="one">%1$d more to beat your best</item>
+        <item quantity="other">%1$d more to beat your best</item>
+    </plurals>
 </resources>

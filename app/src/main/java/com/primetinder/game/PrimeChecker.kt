@@ -33,15 +33,29 @@ object PrimeChecker {
         return factors
     }
 
-    /** Human-readable factors, e.g. 91 -> "7 × 13", 360 -> "2^3 × 3^2 × 5". */
+    /** Human-readable factors, e.g. 91 -> "7 × 13", 360 -> "2³ × 3² × 5". */
     fun factorizationText(value: Int): String =
         factorization(value)
             .groupingBy { it }
             .eachCount()
             .entries
             .joinToString(" × ") { (prime, power) ->
-                if (power == 1) prime.toString() else "$prime^$power"
+                if (power == 1) prime.toString() else "$prime${superscript(power)}"
             }
+
+    /**
+     * Unicode superscripts so the game-over answer reads "11²" rather than
+     * "11^2". Only powers of a prime can reach two digits (2^30 is the largest
+     * that fits an Int), and every digit has a superscript form.
+     */
+    private fun superscript(power: Int): String =
+        power.toString().map { digit -> SUPERSCRIPT_DIGITS.getValue(digit) }.joinToString("")
+
+    private val SUPERSCRIPT_DIGITS: Map<Char, Char> = mapOf(
+        '0' to '\u2070', '1' to '\u00b9', '2' to '\u00b2', '3' to '\u00b3',
+        '4' to '\u2074', '5' to '\u2075', '6' to '\u2076', '7' to '\u2077',
+        '8' to '\u2078', '9' to '\u2079',
+    )
 
     private fun isPrimeByTrialDivision(value: Int): Boolean {
         if (value % 2 == 0) return false

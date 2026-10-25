@@ -45,6 +45,8 @@ class PrimeCheckerTest {
     @Test
     fun formatsFactorization() {
         assertEquals("7 × 13", PrimeChecker.factorizationText(91))
-        assertEquals("2^3 × 3^2 × 5", PrimeChecker.factorizationText(360))
+        assertEquals("2³ × 3² × 5", PrimeChecker.factorizationText(360))
+        assertEquals("2⁴ × 5", PrimeChecker.factorizationText(80))
+        assertEquals("11²", PrimeChecker.factorizationText(121))
     }
 }

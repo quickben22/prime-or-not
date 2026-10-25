@@ -3,9 +3,12 @@ package com.primetinder.ui
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -31,13 +34,13 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -53,6 +56,9 @@ import com.primetinder.R
 import com.primetinder.game.GameCard
 import com.primetinder.game.Guess
 import com.primetinder.ui.theme.PrimeCard
+import com.primetinder.ui.theme.PrimeCardBottom
+import com.primetinder.ui.theme.PrimeCardEdge
+import com.primetinder.ui.theme.PrimeCardNumberStyle
 import com.primetinder.ui.theme.PrimeInk
 import com.primetinder.ui.theme.PrimeNegativeInk
 import com.primetinder.ui.theme.PrimePositiveInk
@@ -62,7 +68,15 @@ import kotlin.math.abs
 
 private const val SWIPE_THRESHOLD_RATIO = 0.32f
 private const val MAX_ROTATION_DEGREES = 12f
+private const val SHAKE_DP = 6f
 
+/**
+ * The top card of the stack.
+ *
+ * [shakeTrigger] is a monotonically increasing counter; every change plays a
+ * short horizontal shake. GameScreen bumps it when a miss is reported so the
+ * failure is felt before the game-over panel covers the screen.
+ */
 @Composable
 fun SwipeCard(
     card: GameCard,
@@ -70,22 +84,41 @@ fun SwipeCard(
     enabled: Boolean,
     onGuess: (Guess) -> Unit,
     modifier: Modifier = Modifier,
+    shakeTrigger: Int = 0,
 ) {
     val view = LocalView.current
     val scope = rememberCoroutineScope()
     val currentOnGuess by rememberUpdatedState(onGuess)
+    val density = LocalDensity.current
 
     var offsetX by remember(card.value) { mutableFloatStateOf(0f) }
     var settleJob by remember(card.value) { mutableStateOf<Job?>(null) }
     var committed by remember(card.value) { mutableStateOf(false) }
     var thresholdCrossed by remember(card.value) { mutableStateOf(false) }
-    val entryScale = remember(card.value) { Animatable(0.96f) }
+
+    // Deal animation: the card drops in slightly small and transparent, then
+    // springs to full size. Keyed on the value, so every card feels dealt.
+    val entryScale = remember(card.value) { Animatable(0.90f) }
+    val entryAlpha = remember(card.value) { Animatable(0f) }
+    val shake = remember { Animatable(0f) }
 
     LaunchedEffect(card.value) {
+        launch { entryAlpha.animateTo(1f, tween(durationMillis = 110)) }
         entryScale.animateTo(
             targetValue = 1f,
-            animationSpec = tween(durationMillis = 180, easing = FastOutLinearInEasing),
+            animationSpec = spring(dampingRatio = 0.62f, stiffness = 520f),
         )
+    }
+
+    LaunchedEffect(shakeTrigger) {
+        if (shakeTrigger <= 0) return@LaunchedEffect
+        val amplitude = with(density) { SHAKE_DP.dp.toPx() }
+        repeat(3) { index ->
+            val step = amplitude * (1f - index * 0.22f)
+            shake.animateTo(step, tween(durationMillis = 44, easing = LinearEasing))
+            shake.animateTo(-step, tween(durationMillis = 44, easing = LinearEasing))
+        }
+        shake.animateTo(0f, tween(durationMillis = 60, easing = FastOutSlowInEasing))
     }
 
     DisposableEffect(card.value) {
@@ -126,10 +159,11 @@ fun SwipeCard(
         modifier = modifier
             .testTag("card")
             .graphicsLayer {
-                translationX = offsetX
+                translationX = offsetX + shake.value
                 rotationZ = rotation
                 scaleX = entryScale.value
                 scaleY = entryScale.value
+                alpha = entryAlpha.value
             }
             .semantics {
                 contentDescription = cardDescription
@@ -210,12 +244,26 @@ fun CardFace(card: GameCard, modifier: Modifier = Modifier) {
         modifier = modifier,
         shape = RoundedCornerShape(28.dp),
         color = PrimeCard,
-        shadowElevation = 14.dp,
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE6E8EC)),
+        shadowElevation = 18.dp,
+        border = BorderStroke(1.dp, PrimeCardEdge),
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .background(Brush.verticalGradient(listOf(PrimeCard, PrimeCardBottom)))
+                .drawWithCache {
+                    val highlight = Color.White.copy(alpha = 0.95f)
+                    onDrawWithContent {
+                        drawContent()
+                        // Inner top highlight: the "light catching the edge" cue.
+                        drawLine(
+                            color = highlight,
+                            start = Offset(0f, 1f),
+                            end = Offset(size.width, 1f),
+                            strokeWidth = 1.dp.toPx(),
+                        )
+                    }
+                }
                 .padding(horizontal = 22.dp, vertical = 22.dp),
         ) {
             Text(
@@ -227,7 +275,7 @@ fun CardFace(card: GameCard, modifier: Modifier = Modifier) {
 
             Text(
                 text = card.value.toString(),
-                style = MaterialTheme.typography.displayLarge,
+                style = PrimeCardNumberStyle,
                 color = PrimeInk,
                 maxLines = 1,
                 textAlign = TextAlign.Center,
@@ -282,7 +330,7 @@ private fun SwipeStamp(
             fontWeight = FontWeight.Black,
             letterSpacing = 2.sp,
             modifier = Modifier
-                .rotate(rotationDegrees)
+                .graphicsLayer { rotationZ = rotationDegrees }
                 .border(3.dp, color.copy(alpha = alpha), RoundedCornerShape(10.dp))
                 .background(
                     brush = Brush.verticalGradient(

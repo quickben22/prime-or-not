@@ -20,11 +20,36 @@ val PrimeNegative = Color(0xFFFF7A90)
 val PrimeTextPrimary = Color(0xFFF7F8FA)
 val PrimeTextMuted = Color(0xFF7F93A1)
 val PrimeCard = Color(0xFFFFFFFF)
+
+// Bottom stop of the card gradient: a hair off-white so the card reads as a
+// physical surface rather than a flat rectangle.
+val PrimeCardBottom = Color(0xFFF2F0EB)
+val PrimeCardEdge = Color(0xFFE4E1DA)
 val PrimeInk = Color(0xFF101820)
 
 // Darkened accents for text/stamps drawn on the white card.
 val PrimePositiveInk = Color(0xFF00806E)
 val PrimeNegativeInk = Color(0xFFC63A52)
+
+/**
+ * Tabular figures keep the score from shifting sideways as digits change.
+ * Also used by the card number so a dealt card never re-centres itself.
+ */
+val PrimeScoreStyle = TextStyle(
+    fontFamily = FontFamily.SansSerif,
+    fontWeight = FontWeight.Black,
+    fontSize = 30.sp,
+    letterSpacing = (-1).sp,
+    fontFeatureSettings = "tnum",
+)
+
+val PrimeCardNumberStyle = TextStyle(
+    fontFamily = FontFamily.SansSerif,
+    fontWeight = FontWeight.Black,
+    fontSize = 88.sp,
+    letterSpacing = (-3).sp,
+    fontFeatureSettings = "tnum",
+)
 
 private val PrimeColors = darkColorScheme(
     primary = PrimeAccent,
@@ -43,16 +68,12 @@ private val PrimeColors = darkColorScheme(
 )
 
 private val PrimeTypography = Typography(
-    displayLarge = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontWeight = FontWeight.Black,
-        fontSize = 88.sp,
-        letterSpacing = (-3).sp,
-    ),
+    displayLarge = PrimeCardNumberStyle,
     headlineMedium = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Bold,
         fontSize = 26.sp,
+        fontFeatureSettings = "tnum",
     ),
     titleLarge = TextStyle(
         fontFamily = FontFamily.SansSerif,
@@ -69,6 +90,13 @@ private val PrimeTypography = Typography(
         fontWeight = FontWeight.Bold,
         fontSize = 11.sp,
         letterSpacing = 2.sp,
+    ),
+    labelLarge = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Black,
+        fontSize = 12.sp,
+        letterSpacing = 1.sp,
+        fontFeatureSettings = "tnum",
     ),
 )
 

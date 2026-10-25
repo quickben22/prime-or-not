@@ -24,6 +24,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -32,10 +34,10 @@ import com.primetinder.R
 import com.primetinder.game.PrimeChecker
 import com.primetinder.ui.theme.PrimeAccent
 import com.primetinder.ui.theme.PrimeBackground
+import com.primetinder.ui.theme.PrimeScoreStyle
 import com.primetinder.ui.theme.PrimeSurface
 import com.primetinder.ui.theme.PrimeTextMuted
 import com.primetinder.ui.theme.PrimeTextPrimary
-import androidx.compose.ui.res.stringResource
 
 @Composable
 fun GameOverPanel(
@@ -60,7 +62,7 @@ fun GameOverPanel(
 
     Box(
         modifier = modifier
-            .background(Color.Black.copy(alpha = 0.58f))
+            .background(Color.Black.copy(alpha = 0.62f))
             .pointerInput(Unit) { detectTapGestures { } },
         contentAlignment = Alignment.Center,
     ) {
@@ -77,6 +79,25 @@ fun GameOverPanel(
                 modifier = Modifier.padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
+                if (state.isNewBest) {
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = PrimeAccent,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.new_best_label),
+                            color = PrimeBackground,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 1.5.sp,
+                            modifier = Modifier
+                                .testTag("panelNewBest")
+                                .padding(horizontal = 12.dp, vertical = 4.dp),
+                        )
+                    }
+                    Spacer(Modifier.height(12.dp))
+                }
+
                 Text(
                     text = title.uppercase(),
                     style = MaterialTheme.typography.labelSmall,
@@ -93,7 +114,7 @@ fun GameOverPanel(
 
                 Spacer(Modifier.height(22.dp))
                 HorizontalDivider(color = PrimeTextPrimary.copy(alpha = 0.10f))
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(18.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -101,15 +122,59 @@ fun GameOverPanel(
                 ) {
                     ResultStat(
                         label = stringResource(R.string.score_label),
-                        value = state.score,
+                        value = state.score.toString(),
+                        tag = "summaryScore",
                     )
                     ResultStat(
                         label = stringResource(R.string.best_label),
-                        value = state.bestScore,
+                        value = state.bestScore.toString(),
+                        tag = "summaryBest",
                     )
                 }
 
-                Spacer(Modifier.height(26.dp))
+                Spacer(Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                ) {
+                    ResultStat(
+                        label = stringResource(R.string.best_streak_label),
+                        value = state.bestStreak.toString(),
+                        tag = "summaryStreak",
+                        compact = true,
+                    )
+                    ResultStat(
+                        label = stringResource(R.string.accuracy_label),
+                        value = "${state.accuracyPercent}%",
+                        tag = "summaryAccuracy",
+                        compact = true,
+                    )
+                    ResultStat(
+                        label = stringResource(R.string.fastest_label),
+                        value = formatFastest(state.fastestAnswerMs),
+                        tag = "summaryFastest",
+                        compact = true,
+                    )
+                }
+
+                val toBeat = state.cardsToBeatBest
+                if (toBeat != null) {
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        text = pluralStringResource(
+                            R.plurals.cards_to_beat_best,
+                            toBeat,
+                            toBeat,
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = PrimeTextMuted,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.testTag("toBeatBest"),
+                    )
+                }
+
+                Spacer(Modifier.height(24.dp))
                 Button(
                     onClick = onRestart,
                     modifier = Modifier
@@ -133,18 +198,34 @@ fun GameOverPanel(
 }
 
 @Composable
-private fun ResultStat(label: String, value: Int) {
+private fun ResultStat(
+    label: String,
+    value: String,
+    tag: String,
+    compact: Boolean = false,
+) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
             color = PrimeTextMuted,
+            fontSize = if (compact) 9.sp else 11.sp,
+            textAlign = TextAlign.Center,
         )
         Text(
-            text = value.toString(),
+            text = value,
+            style = PrimeScoreStyle,
+            fontSize = if (compact) 20.sp else 34.sp,
             color = PrimeTextPrimary,
-            fontSize = 34.sp,
-            fontWeight = FontWeight.Black,
+            modifier = Modifier.testTag(tag),
         )
     }
+}
+
+/** Compact, locale-free formatting: "840 ms" under a second, "1.2s" above. */
+private fun formatFastest(millis: Long?): String {
+    if (millis == null) return "\u2014"
+    if (millis < 1_000L) return "$millis ms"
+    val tenths = (millis + 50L) / 100L
+    return "${tenths / 10}.${tenths % 10}s"
 }

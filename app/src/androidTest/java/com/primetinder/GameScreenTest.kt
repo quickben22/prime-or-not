@@ -176,4 +176,65 @@ class GameScreenTest {
         compose.onNodeWithText("91 = 7 × 13").assertIsDisplayed()
         compose.onNodeWithText("Try again").assertIsDisplayed()
     }
+
+    @Test
+    fun showsNewBestStreakAndDailyChips() {
+        compose.setContent {
+            PrimeTinderTheme {
+                GameScreen(
+                    state = GameUiState(
+                        card = GameCard(97),
+                        nextCard = GameCard(91),
+                        score = 8,
+                        bestScore = 7,
+                        remainingMs = 4_000,
+                        timeLimitMs = 6_000,
+                        streak = 4,
+                        isNewBest = true,
+                        dailyStreak = 3,
+                    ),
+                    onSwipe = {},
+                    onRestart = {},
+                )
+            }
+        }
+
+        compose.onNodeWithTag("newBestBadge").assertTextEquals("NEW BEST")
+        compose.onNodeWithTag("streakChip").assertIsDisplayed()
+        compose.onNodeWithTag("dailyStreak").assertTextEquals("DAY 3")
+    }
+
+    @Test
+    fun gameOverSummaryShowsRunStats() {
+        compose.setContent {
+            PrimeTinderTheme {
+                GameScreen(
+                    state = GameUiState(
+                        phase = GamePhase.GameOver,
+                        card = GameCard(91),
+                        nextCard = GameCard(97),
+                        score = 12,
+                        bestScore = 21,
+                        remainingMs = 2_000,
+                        timeLimitMs = 5_000,
+                        gameOverReason = GameOverReason.WrongGuess,
+                        missedCard = GameCard(91),
+                        bestStreak = 5,
+                        cardsSeen = 13,
+                        correctCount = 12,
+                        fastestAnswerMs = 1_240,
+                    ),
+                    onSwipe = {},
+                    onRestart = {},
+                )
+            }
+        }
+
+        compose.onNodeWithTag("summaryScore").assertTextEquals("12")
+        compose.onNodeWithTag("summaryBest").assertTextEquals("21")
+        compose.onNodeWithTag("summaryStreak").assertTextEquals("5")
+        compose.onNodeWithTag("summaryAccuracy").assertTextEquals("92%")
+        compose.onNodeWithTag("summaryFastest").assertTextEquals("1.2s")
+        compose.onNodeWithText("10 more to beat your best").assertIsDisplayed()
+    }
 }

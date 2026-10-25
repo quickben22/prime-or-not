@@ -7,9 +7,12 @@ import kotlin.random.Random
  *
  * The answer is chosen before the number: a coin flip decides prime vs composite,
  * then a value is sampled from that tier's pool. This keeps the deck at 50/50
- * instead of inheriting the natural density of primes. Composites are weighted
- * toward harder cases (odd and not divisible by 5) so the game is not just
- * "is it even?". Values never repeat within a run.
+ * instead of inheriting the natural density of primes.
+ *
+ * From 100 up, even numbers and multiples of 5 are excluded entirely, so the
+ * three- and four-digit tiers are a real primality test rather than "is it even?".
+ * In the 2–99 tier composites are weighted toward harder cases (odd and not
+ * divisible by 5). Values never repeat within a run.
  */
 class CardDeck(private val random: Random = Random.Default) {
 
@@ -70,12 +73,20 @@ class CardDeck(private val random: Random = Random.Default) {
         val primes = mutableListOf<Int>()
         val hardComposites = mutableListOf<Int>()
         val easyComposites = mutableListOf<Int>()
+        val excludeEasyComposites = range.first >= 100
 
         for (value in range) {
             if (value < 2) continue
+            val isPrime = PrimeChecker.isPrime(value)
+            val isEasyComposite = value % 2 == 0 || value % 5 == 0
+
+            // Above 99 only primes and hard composites are dealt, so every card
+            // is odd and not a multiple of 5.
+            if (excludeEasyComposites && !isPrime && isEasyComposite) continue
+
             when {
-                PrimeChecker.isPrime(value) -> primes += value
-                value % 2 == 0 || value % 5 == 0 -> easyComposites += value
+                isPrime -> primes += value
+                isEasyComposite -> easyComposites += value
                 else -> hardComposites += value
             }
         }
