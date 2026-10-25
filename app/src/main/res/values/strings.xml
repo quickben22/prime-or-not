@@ -1,0 +1,29 @@
+<resources>
+    <string name="app_name">Prime Tinder</string>
+
+    <string name="score_label">SCORE</string>
+    <string name="best_label">BEST</string>
+    <string name="swipe_hint">Swipe right for prime · left for not prime</string>
+    <string name="prime_label">PRIME</string>
+    <string name="not_prime_label">NOT PRIME</string>
+    <string name="tap_to_start">TAP TO START</string>
+    <string name="tap_to_start_hint">Five seconds on the clock</string>
+
+    <string name="game_over_wrong_title">Wrong guess</string>
+    <string name="game_over_timeout_title">Out of time</string>
+    <string name="answer_prime">%1$d is prime</string>
+    <string name="answer_composite">%1$d = %2$s</string>
+    <string name="try_again">Try again</string>
+
+    <plurals name="timer_description">
+        <item quantity="one">%1$d second remaining</item>
+        <item quantity="other">%1$d seconds remaining</item>
+    </plurals>
+
+    <string name="card_prompt">IS THIS PRIME?</string>
+    <string name="prime_edge_hint">PRIME →</string>
+    <string name="not_prime_edge_hint">← NOT PRIME</string>
+    <string name="card_description">Number %1$d. Swipe right if it is prime, left if it is not.</string>
+    <string name="action_prime">Guess prime</string>
+    <string name="action_not_prime">Guess not prime</string>
+</resources>
