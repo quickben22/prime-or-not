@@ -4,11 +4,11 @@
 
     <application
         android:allowBackup="true"
-        android:icon="@drawable/ic_prime_tinder"
+        android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
-        android:roundIcon="@drawable/ic_prime_tinder"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.PrimeTinder">
+        android:theme="@style/Theme.PrimeOrNot">
 
         <!-- AdMob App ID. Test ID by default; see app/build.gradle.kts. -->
         <meta-data

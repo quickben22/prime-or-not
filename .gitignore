@@ -5,3 +5,13 @@ local.properties
 .idea/
 
 app/build/
+
+# Play upload keys and certificates must never be committed.
+*.jks
+*.keystore
+*.p12
+*.pfx
+keystore.properties
+
+# Ad-hoc certificate downloads.
+upload_cert.der

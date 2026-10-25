@@ -1,12 +1,16 @@
-# Prime Tinder
+# Prime or Not
 
 A single-screen Android game built with Kotlin and Jetpack Compose. Number cards
 are dealt face up; swipe **right for prime**, **left for not prime**. Each hit
 extends the run by one point, the first miss or timeout ends it.
 
+- Play app: `Prime or Not`, package `com.companyname.primeornot`, `versionCode 3`,
+  `versionName 2.0.0`
 - `minSdk 24`, `targetSdk`/`compileSdk 37`, AGP 9.1.1, Compose BOM 2026.09.00
-- Game logic is pure Kotlin under `app/src/main/java/com/primetinder/game`
+- Game logic is pure Kotlin under `app/src/main/java/com/companyname/primeornot/game`
 - Architecture and design notes: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+- Play release runbook and full change log: [`docs/PLAY_RELEASE.md`](docs/PLAY_RELEASE.md)
+- Public site (privacy policy, `app-ads.txt`): `https://quickben22.github.io/`
 
 ## Build and run
 
@@ -23,7 +27,7 @@ Then install and launch:
 ```powershell
 $adb="$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
 & $adb install -r -t .\app\build\outputs\apk\debug\app-debug.apk
-& $adb shell am start -n com.primetinder/.MainActivity
+& $adb shell am start -n com.companyname.primeornot/.MainActivity
 ```
 
 Or open the project in Android Studio and press **Run**.
@@ -54,11 +58,52 @@ R8/signing smoke test before real IDs exist:
 .\gradlew.bat assembleRelease -PALLOW_TEST_ADS=true
 ```
 
-That APK contains test ads and must never be distributed. It is also unsigned,
-because no release signing config is defined yet.
+That APK contains test ads and must never be distributed.
 
 Consent, the privacy-options form, and the release guard are described in
 [`docs/ARCHITECTURE.md#ads`](docs/ARCHITECTURE.md#ads).
+
+## Release signing
+
+The Play listing is signed with the 2020 upload key (SHA-256
+`2B:41:8C:E6:FE:AE:83:09:8B:71:8A:0F:E2:87:02:86:5A:F5:BC:CB:3E:EA:00:41:FE:DA:95:60:F7:21:20:84`).
+Gradle reads it from `local.properties`, which is gitignored:
+
+```properties
+release.storeFile=C:/Users/armin/.android-keys/prime-or-not-upload.p12
+release.storePassword=…
+release.keyAlias=quickben
+release.keyPassword=…
+```
+
+`bundleRelease` depends on `validateReleaseSigning`, so it cannot produce an
+unsigned bundle. Build and verify:
+
+```powershell
+$env:JAVA_HOME='C:\Program Files\Android\Android Studio\jbr'
+.\gradlew.bat bundleRelease
+.\gradlew.bat verifyReleaseBundle
+```
+
+The keystore itself lives outside the repo in `C:\Users\armin\.android-keys\`.
+Back up that folder and the password offline; the same values can also come from
+`PLAY_UPLOAD_STORE_FILE`, `PLAY_UPLOAD_STORE_PASSWORD`, `PLAY_UPLOAD_KEY_ALIAS`
+and `PLAY_UPLOAD_KEY_PASSWORD` Gradle properties or environment variables. See
+[`docs/PLAY_RELEASE.md`](docs/PLAY_RELEASE.md) for the full Play Console runbook.
+
+## Public site
+
+`docs/site/` is published to `quickben22/quickben22.github.io` and serves:
+
+- `https://quickben22.github.io/` — game page
+- `https://quickben22.github.io/privacy.html` — privacy policy (used in Play)
+- `https://quickben22.github.io/app-ads.txt` — AdMob authorised sellers
+
+Regenerate `app-ads.txt` after the real AdMob app ID is configured:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/write_app_ads_txt.ps1
+```
 
 ## Tests
 
@@ -73,7 +118,7 @@ Instrumented tests can be run from Studio, or manually so you can pick a device:
 $adb="$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
 & $adb -s emulator-5556 install -r app\build\outputs\apk\debug\app-debug.apk
 & $adb -s emulator-5556 install -r app\build\outputs\apk\androidTest\debug\app-debug-androidTest.apk
-& $adb -s emulator-5556 shell am instrument -w com.primetinder.test/androidx.test.runner.AndroidJUnitRunner
+& $adb -s emulator-5556 shell am instrument -w com.companyname.primeornot.test/androidx.test.runner.AndroidJUnitRunner
 ```
 
 Avoid `connectedDebugAndroidTest` when more than one emulator is running — it

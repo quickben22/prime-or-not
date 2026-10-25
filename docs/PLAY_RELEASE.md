@@ -1,0 +1,532 @@
+# Prime or Not — Play release runbook and work log
+
+Status: **code, signing, artwork and public site are ready. The upload is waiting
+on two real AdMob IDs and one Play Console fingerprint check.**
+
+Last updated: 25 October 2026.
+
+This file records everything that was changed to turn the local prototype into a
+Play submission, why each change was made, and the exact steps left for a human
+in Play Console and AdMob.
+
+---
+
+## 1. App identity
+
+| | |
+|---|---|
+| Play listing | `PRIME OR NOT` (existing app, do not create a new one) |
+| Display name | **Prime or Not** |
+| Package / applicationId | `com.companyname.primeornot` — permanent |
+| This upload | `versionCode 3`, `versionName 2.0.0` |
+| Previous uploads | `versionCode 2` / `1.1` (Closed testing – Alpha), `versionCode 1` / `1.0` (Internal testing) |
+| minSdk / targetSdk / compileSdk | 24 / 37 / 37 |
+| Category | Games › Puzzle |
+| Price | Free, contains ads, no in-app purchases |
+
+The package was kept because package names are permanent; it still reads
+`com.companyname.…` from the 2020 Android Studio template, and renaming it
+would create a second app with no install history. `versionName` jumps from 1.1
+to 2.0.0 because this is a full Kotlin/Compose rewrite, not a patch.
+
+`versionCode` must keep increasing. It is now a single constant in
+`app/build.gradle.kts` (`appVersionCode` / `appVersionName`) so the manifest,
+the verification task and this document cannot drift apart.
+
+---
+
+## 2. Release signing (solved — no key reset needed)
+
+The 2020 app was signed with a key that still exists on this machine. It was
+found, matched to the certificate exported from Play Console, and copied to a
+dedicated location with a new password.
+
+### Verified match
+
+| Item | Value |
+|---|---|
+| Original key | `D:\Visual studio\BetsKeeper\Frisk-bets-keeper-xamarin-8b72a42ebca0\AndroidTest3\AndroidTest3.Android\quickben.keystore` |
+| Type / alias | JKS, alias `quickben`, 2048-bit RSA, SHA256withRSA, valid to 2049 |
+| Play upload certificate | `upload_cert.der`, subject `C=HR, S=Zagreb, L=Zagreb`, serial `7ce59e9e` |
+| SHA-256 (both) | `2B:41:8C:E6:FE:AE:83:09:8B:71:8A:0F:E2:87:02:86:5A:F5:BC:CB:3E:EA:00:41:FE:DA:95:60:F7:21:20:84` |
+| Result | Exact match; no upload-key reset required |
+
+### Where the key lives now
+
+```text
+C:\Users\armin\.android-keys\
+├── prime-or-not-upload.p12      <- Gradle signs with this (alias quickben)
+├── prime-or-not-upload-cert.der <- public certificate from Play Console
+├── quickben-original-backup.jks <- untouched 2019 JKS copy
+└── README.txt                   <- backup notes + fingerprint
+```
+
+The `.p12` is the same key pair re-wrapped in PKCS#12 with a new random
+password. The certificate and private key are byte-for-byte the originals, so
+Play accepts it as the existing upload key.
+
+The password is **not** in this repo. It is stored in `local.properties`
+(gitignored) as `release.storePassword` / `release.keyPassword`; the same file
+holds `release.storeFile` and `release.keyAlias`.
+
+**Back this folder up offline, together with the contents of `local.properties`.**
+Losing the upload key does not lose the app (Play App Signing holds the app
+signing key), but it forces an upload-key reset before the next release.
+
+### Confirm once in Play Console
+
+Open **PRIME OR NOT → Test and release → Setup → App signing** and check that:
+
+1. Play App Signing is **enabled**.
+2. The **upload certificate** SHA-256 is exactly
+   `2B:41:8C:E6:FE:AE:83:09:8B:71:8A:0F:E2:87:02:86:5A:F5:BC:CB:3E:EA:00:41:FE:DA:95:60:F7:21:20:84`.
+
+Do not use the *app signing certificate* fingerprint for this check — Google
+holds that key and it is expected to differ.
+
+If the fingerprint differs, stop: do not upload. Either import this key under
+the upload-certificate page or reset the upload key there.
+
+### Build guard
+
+- `validateReleaseSigning` runs before `bundleRelease` and fails when any of the
+  four values is blank or the keystore file is missing.
+- `verifyReleaseBundle` builds the bundle, checks the manifest contains
+  `com.companyname.primeornot` and `2.0.0`, then runs `keytool -printcert
+  -jarfile` and fails unless the signer is the fingerprint above.
+
+---
+
+## 3. AdMob (blocking the upload)
+
+The code side is done; the account side needs two real IDs.
+
+`app/build.gradle.kts` reads:
+
+```properties
+# local.properties — gitignored, not committed
+admob.appId=ca-app-pub-################~##########
+admob.bannerUnitId=ca-app-pub-################/##########
+```
+
+- Debug builds always use Google's sample IDs, so they work offline and can be
+  screenshotted without serving real ads.
+- Release builds use the configured IDs. `validateReleaseAdIds` fails if either
+  is blank or still contains Google's sample publisher `3940256099942544`.
+- `-PALLOW_TEST_ADS=true` is the only escape hatch and must never be uploaded.
+
+Create (or reuse) in AdMob:
+
+1. **Apps → Add app → Android**, name `Prime or Not`, then copy the **App ID**
+   (`ca-app-pub-…~…`).
+2. **Ad units → Banner →** name `Prime or Not — game over`, copy the **unit ID**
+   (`ca-app-pub-…/…`).
+3. Put both in `local.properties` as above. The publisher number (16 digits
+   after `ca-app-pub-`) must be identical in both IDs; the helper script checks
+   this.
+
+The banner is only requested on the game-over screen, after UMP consent allows
+ad requests. `Ready` and `Playing` render no ad slot at all.
+
+Once the IDs exist:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/write_app_ads_txt.ps1
+```
+
+That writes `docs/site/app-ads.txt`:
+
+```text
+google.com, pub-################, DIRECT, f08c47fec0942fa0
+```
+
+`app-ads.txt` must be served at `https://quickben22.github.io/app-ads.txt`, and
+the Play listing website must be `https://quickben22.github.io/`. AdMob crawls
+that file to authorise sellers. A wrong publisher ID is worse than no file, which
+is why no placeholder is committed.
+
+---
+
+## 4. Public site (`quickben22/quickben22.github.io`)
+
+Source lives in `docs/site/` and is published by GitHub Pages from the repo root.
+
+| File | URL | Purpose |
+|---|---|---|
+| `index.html` | `https://quickben22.github.io/` | game page, linked from Play as website |
+| `privacy.html` | `https://quickben22.github.io/privacy.html` | privacy policy required by Play |
+| `app-ads.txt` | `https://quickben22.github.io/app-ads.txt` | AdMob authorised sellers (generated) |
+| `icon-512.png` | `https://quickben22.github.io/icon-512.png` | icon on the page |
+
+The policy covers: local-only scores, the AdMob banner, approximate location /
+app interactions / diagnostics / device identifiers, EEA-UK consent via UMP and
+how to withdraw it, children, retention, deletion and contact.
+
+To publish:
+
+```powershell
+# one-time: copy docs/site to the site repo root
+git clone https://github.com/quickben22/quickben22.github.io.git ..\quickben22.github.io
+Copy-Item docs\site\* ..\quickben22.github.io\ -Recurse -Force
+# commit + push, then Settings → Pages → Deploy from branch → main / (root)
+```
+
+Keep the site copy generated by hand in sync; there is no build step. After
+pushing, open the three URLs and confirm they return 200 before pasting the
+privacy URL into Play.
+
+---
+
+## 5. What changed in the code
+
+### Rename and branding
+
+- Package and namespace: `com.primetinder` → `com.companyname.primeornot`
+  (31 files updated; sources moved to
+  `app/src/main/java/com/companyname/primeornot/`, same for `test` and
+  `androidTest`).
+- Visible name: "Prime Tinder" → "Prime or Not" in `settings.gradle.kts`,
+  `strings.xml`, README and architecture notes.
+- Theme names: `Theme.PrimeTinder` → `Theme.PrimeOrNot`,
+  `PrimeTinderTheme` → `PrimeOrNotTheme`.
+- DataStore file: `prime_tinder_scores` → `prime_or_not_scores`. This resets
+  local scores once on upgrade — acceptable for a 2020 prototype.
+- Root project name: `Prime or Not`.
+
+### Version and Play metadata
+
+- `versionCode 3`, `versionName 2.0.0`.
+- Release signing config sourced from `local.properties` / Gradle properties /
+  environment variables, never committed.
+- `validateReleaseSigning` and `verifyReleaseBundle` tasks (see §2).
+- `validateReleaseAdIds` already existed and still blocks sample ad IDs.
+
+### Launcher icon
+
+- Added an adaptive icon: `mipmap-anydpi-v26/ic_launcher.xml` and
+  `ic_launcher_round.xml`, with `drawable/ic_launcher_foreground.xml` (accent
+  ring + white "P") and `drawable/ic_launcher_monochrome.xml` for themed icons.
+- Added legacy PNG mipmaps for mdpi–xxxhdpi, downscaled from the 512 px source
+  and masked (rounded square / circle) so API 24–25 launchers get the same mark.
+- `AndroidManifest.xml` now points `android:icon` at `@mipmap/ic_launcher` and
+  `android:roundIcon` at `@mipmap/ic_launcher_round`.
+- Removed the old `drawable/ic_prime_tinder.xml`.
+- Background colour resource `values/ic_launcher_background.xml` (`#101820`).
+
+### Store artwork (`docs/store/`)
+
+All artwork is reproducible from HTML/SVG sources in the same folder, rendered
+with headless Chrome.
+
+| File | Size | Use |
+|---|---|---|
+| `icon-512.png` | 512×512 | Play app icon |
+| `feature-graphic-1024x500.png` | 1024×500 | Play feature graphic |
+| `icon.html`, `icon-source.svg` | — | icon source |
+| `feature-graphic.html` | — | feature graphic source |
+| `screenshots/` | 1080×1920 | phone screenshots (see below) |
+
+### Privacy site and tooling
+
+- `docs/site/index.html`, `privacy.html`, `icon-512.png`,
+  `app-ads.txt.example`.
+- `tools/write_app_ads_txt.ps1` — derives the publisher ID from
+  `admob.appId`, refuses sample IDs, cross-checks the banner unit's publisher,
+  and writes `docs/site/app-ads.txt`. Supports `-Check` and `-OutputPath`.
+- `.gitignore` now excludes `*.jks`, `*.keystore`, `*.p12`, `*.pfx`,
+  `keystore.properties`, `local.properties` and `upload_cert.der`.
+- `upload_cert.der` was moved out of the repo to `~\.android-keys\`.
+
+No game logic, layout, sound or scoring behaviour was changed in this release
+pass.
+
+---
+
+## 6. Build and test
+
+Prerequisite: JDK 17+. The machine default is JDK 11, so always override:
+
+```powershell
+$env:JAVA_HOME='C:\Program Files\Android\Android Studio\jbr'
+```
+
+Unit tests, lint and the debug APK:
+
+```powershell
+.\gradlew.bat testDebugUnitTest lintDebug assembleDebug
+```
+
+Optional instrumented tests (single device; do not use
+`connectedDebugAndroidTest` with several emulators attached):
+
+```powershell
+$adb="$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
+& $adb -s emulator-5554 install -r app\build\outputs\apk\debug\app-debug.apk
+& $adb -s emulator-5554 install -r app\build\outputs\apk\androidTest\debug\app-debug-androidTest.apk
+& $adb -s emulator-5554 shell am instrument -w com.companyname.primeornot.test/androidx.test.runner.AndroidJUnitRunner
+```
+
+Release bundle (needs real AdMob IDs and the upload key):
+
+```powershell
+.\gradlew.bat verifyReleaseBundle
+```
+
+`verifyReleaseBundle` depends on `bundleRelease`, so it builds and checks in one
+step. The artifact is `app/build/outputs/bundle/release/app-release.aab`.
+
+Local-only release smoke test with sample ads (never upload this):
+
+```powershell
+.\gradlew.bat assembleRelease -PALLOW_TEST_ADS=true
+```
+
+### Result of the last run
+
+- `testDebugUnitTest`: **35 tests, 0 failures, 0 skipped** (5 suites).
+- `lintDebug`: **0 errors, 2 warnings** (`AndroidGradlePluginVersion` only —
+  AGP is pinned deliberately, see `docs/ARCHITECTURE.md#build`).
+- `assembleDebug`: debug APK ≈ 17.9 MB, installs and runs on API 35.
+- `bundleRelease` without AdMob IDs: **fails at `validateReleaseAdIds`** with
+  `admob.appId is not set` / `admob.bannerUnitId is not set`. This is the
+  intended guard, not a broken build.
+- `verifyReleaseBundle -PALLOW_TEST_ADS=true`: **passed** — package
+  `com.companyname.primeornot`, version `2.0.0` (code 3), signer
+  `2B:41:8C:E6:…:20:84`, bundle 6.9 MiB. The artifact was then deleted because
+  it contains Google's sample ad IDs and must never be uploaded.
+- `assembleDebugAndroidTest`: builds; `am instrument` on `emulator-5554`
+  (API 35) ran **10/10 `GameScreenTest` cases, OK**, in 16 s.
+
+---
+
+## 7. Screenshots
+
+Captured on `emulator-5554` (API 35, Pixel 5 AVD). The emulator's native
+1080×2340 is not a valid Play ratio (max 2:1), so the display was temporarily
+set to 1080×1920 and restored afterwards with `wm size reset`. Networking is
+disabled for the game-over shots so the banner never appears in a store image.
+
+```powershell
+$adb="$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
+& $adb shell wm size 1080x1920
+& $adb shell settings put global airplane_mode_on 1
+# ... play to the required state, then:
+& $adb exec-out screencap -p > docs\store\screenshots\phone-02-playing.png
+& $adb shell wm size reset
+& $adb shell settings put global airplane_mode_on 0
+```
+
+Files are listed in `docs/store/listing.md` with the order to upload them.
+
+Captured set (all 1080×1920, BEST 2 for continuity):
+
+| File | State |
+|---|---|
+| `screenshots/phone-01-ready.png` | start card, TAP TO START |
+| `screenshots/phone-02-playing.png` | card 81, score 1, 5 s timer |
+| `screenshots/phone-03-wrong.png` | wrong guess, `9 = 3²` |
+| `screenshots/phone-04-timeout.png` | out of time, `71 is prime`, 100% accuracy |
+| `screenshots/phone-05-new-best.png` | NEW BEST, score 2 |
+
+---
+
+## 8. Play Console checklist
+
+These pages must be green before a production rollout. Most are one-time.
+
+### Store listing
+
+- [ ] App name **Prime or Not**, short and full description from
+      `docs/store/listing.md`
+- [ ] App icon 512×512, feature graphic 1024×500, 4–8 phone screenshots
+- [ ] Category Games › Puzzle, tags, contact email
+- [ ] Privacy policy URL `https://quickben22.github.io/privacy.html`
+- [ ] Website `https://quickben22.github.io/`
+
+### App content
+
+- [ ] **Privacy policy** URL saved
+- [ ] **Ads:** yes, app contains ads
+- [ ] **App access:** all functionality available without restrictions (no login)
+- [ ] **Content rating:** complete the IARC questionnaire (game, no violence,
+      no language, no controlled substances, no gambling, no UGC, contains ads)
+- [ ] **Target audience:** 13+; not designed for children, not in Families
+- [ ] **Data safety:** see the table below
+- [ ] **News app:** no
+- [ ] **COVID-19 apps:** no
+- [ ] **Data deletion:** yes, point at the privacy policy (see note)
+- [ ] **Financial features:** none
+- [ ] **Health:** none
+- [ ] **Government app:** no
+
+### Data safety answers
+
+Data is collected by the Google Mobile Ads SDK, not by the developer, but Play
+requires the developer to declare it.
+
+| Data type | Collected | Shared | Purposes |
+|---|---|---|---|
+| Approximate location | yes | yes | Advertising or marketing; Analytics |
+| App interactions | yes | yes | Advertising or marketing; Analytics; Fraud prevention, security and compliance |
+| Diagnostics | yes | yes | Analytics; Fraud prevention, security and compliance |
+| Device or other IDs | yes | yes | Advertising or marketing; Analytics; Fraud prevention, security and compliance |
+
+- Encrypted in transit: **yes**
+- Users can request deletion: **yes** → `https://quickben22.github.io/privacy.html`
+  (there is no developer server or account; the policy explains device-data
+  clearing and Google's ad controls)
+- Committed to the Play Families policy: **no**
+- Independent security review: **no**
+
+Do not declare precise location, contacts, files, health, messages or financial
+information — the app requests none of those permissions.
+
+### Test and release
+
+1. **Internal testing → Create new release**, upload `app-release.aab`, release
+   notes "2.0.0 — native Compose rewrite, new icon, privacy policy."
+2. Add yourself as a tester, install from the opt-in link, check the start
+   screen, a few swipes, a game over and the retry screen on API 35 and, if
+   available, API 24.
+3. **Closed testing → Alpha → Create new release**, same bundle, roll out to the
+   existing testers.
+4. When production is unlocked: **Production → Create new release**, same
+   bundle, staged rollout (e.g. 20% → 100%).
+5. If Play shows **Apply for production access** instead, complete that form
+   (it appears for apps that have never had a production release). The 12-tester
+   rule applies only to personal developer accounts created after
+   13 November 2023; this account predates it.
+
+### Release notes (copy/paste)
+
+```text
+2.0.0
+• Rebuilt from the ground up with Jetpack Compose
+• New launcher icon and refreshed dark theme
+• Faster start, smoother card animations
+• Daily streak, best score and detailed run summary
+• Privacy policy and consent options for personalized ads
+```
+
+---
+
+## 9. Remaining work
+
+### Needs a human decision or account access
+
+1. **Real AdMob app ID and banner unit ID** → add to `local.properties`, then
+   run `tools/write_app_ads_txt.ps1`. Without these, `bundleRelease` correctly
+   refuses to build.
+2. **Confirm the upload-certificate fingerprint** in Play Console (§2).
+3. **Confirm the contact email.** The site and policy currently use
+   `quickben22@gmail.com`; change it in `docs/site/index.html`,
+   `docs/site/privacy.html`, `docs/store/listing.md` and the Play listing if a
+   different address should be public.
+
+### Needs the AAB
+
+4. Upload version 3 to Internal testing, smoke-test, then Closed testing, then
+   production.
+5. Add `app-ads.txt` to the site repo after the publisher ID is known and verify
+   `https://quickben22.github.io/app-ads.txt` returns the line.
+6. In AdMob, link the app to the Play listing (App settings → App store) so
+   AdMob can verify the store presence.
+
+### Optional follow-ups
+
+- Reset Prime or Not to a dedicated upload key. The current key is shared with
+  an old BetsKeeper project; Play App Signing means a reset only changes the
+  upload credential, not the installed app.
+- The old BetsKeeper folder contains the keystore and a plaintext password in
+  `AndroidTest3\aab.txt`. It is not publicly findable, but keep it private and
+  consider rotating that key too.
+- Persist an in-progress run across process death.
+- Add a mute toggle persisted with the score stats.
+
+---
+
+## 10. Work log
+
+### 25 October 2026
+
+**Investigation**
+
+- Confirmed `quickben22/PrimeOrNot` on GitHub is the 2020 Xamarin prototype,
+  never published; its package matches the existing Play app.
+- Read Play Console state: versionCode 2 / 1.1 in Closed testing – Alpha,
+  versionCode 1 / 1.0 in Internal testing, production at 0%.
+- Matched the Play upload certificate to the 2019 `quickben.keystore` found in
+  the old BetsKeeper folder (same serial, same SHA-256), so no key reset.
+
+**Signing**
+
+- Copied the key to `~\.android-keys\prime-or-not-upload.p12` as PKCS#12 with a
+  fresh random password; re-verified the certificate fingerprint after
+  conversion.
+- Wrote `release.*` values to `local.properties`; moved `upload_cert.der` out of
+  the repo; added key/cert patterns to `.gitignore`.
+- Added `validateReleaseSigning` and `verifyReleaseBundle` to
+  `app/build.gradle.kts`.
+
+**Code and branding**
+
+- Renamed package, namespace, directories and visible strings (31 files).
+- Bumped to versionCode 3 / 2.0.0 and centralised both values.
+- Renamed the DataStore file and theme identifiers.
+- Removed the old launcher drawable.
+
+**Artwork**
+
+- Designed the ring-and-P mark, wrote `docs/store/icon-source.svg`,
+  `icon.html` and `feature-graphic.html`.
+- Rendered `icon-512.png` and `feature-graphic-1024x500.png` with headless
+  Chrome; inspected both visually and fixed the P stem overlapping the ring.
+- Generated adaptive-icon vectors, monochrome layer and legacy PNG mipmaps.
+
+**Public site**
+
+- Wrote `docs/site/index.html` and `privacy.html` (AdMob/UMP data practices).
+- Added `tools/write_app_ads_txt.ps1` and the `.example` template.
+- Copied the icon to the site.
+
+**Documentation**
+
+- This file, `docs/store/listing.md`, and updates to `README.md` and
+  `docs/ARCHITECTURE.md`.
+
+**Build and verification**
+
+- `testDebugUnitTest`: 35/35 passing; `lintDebug`: 0 errors, 2 warnings (AGP
+  pin); `GameScreenTest` instrumented suite 10/10 on API 35; debug APK builds
+  and runs.
+- `bundleRelease` correctly refused to build without AdMob IDs.
+- `verifyReleaseBundle -PALLOW_TEST_ADS=true` signed and verified an AAB with
+  the 2020 upload key (package, version and SHA-256 all checked), then the
+  test-ad artifact was deleted.
+- Captured five 1080×1920 store screenshots and inspected each one.
+
+---
+
+## 11. File map
+
+```text
+docs/
+├── PLAY_RELEASE.md              this file
+├── ARCHITECTURE.md              design and module notes
+├── site/                        published to quickben22.github.io
+│   ├── index.html
+│   ├── privacy.html
+│   ├── app-ads.txt              generated from the real AdMob ID
+│   ├── app-ads.txt.example
+│   └── icon-512.png
+└── store/
+    ├── listing.md               Play copy and graphics checklist
+    ├── icon-512.png
+    ├── feature-graphic-1024x500.png
+    ├── icon.html / icon-source.svg / feature-graphic.html
+    └── screenshots/             phone-01…phone-05, 1080×1920
+
+tools/
+├── generate_sfx.ps1
+└── write_app_ads_txt.ps1        AdMob ID -> app-ads.txt
+```

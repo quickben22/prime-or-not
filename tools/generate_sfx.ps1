@@ -1,4 +1,4 @@
-# Generates the synthesised sound effects used by Prime Tinder.
+# Generates the synthesised sound effects used by Prime or Not.
 #
 # Everything is 44.1 kHz mono 16-bit PCM, written straight into res/raw so the
 # APK has no audio licensing to worry about and the samples stay reproducible:

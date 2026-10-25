@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Prime Tinder"
+rootProject.name = "Prime or Not"
 include(":app")

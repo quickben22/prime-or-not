@@ -1,4 +1,4 @@
-# Prime Tinder Architecture
+# Prime or Not Architecture
 
 A single-screen, native Android game built with Kotlin and Jetpack Compose. The
 player swipes number cards: right for prime, left for not prime. Correct guesses
@@ -7,7 +7,7 @@ extend the run and add a point; the first wrong guess or timeout ends it.
 ## Module layout
 
 ```
-com.primetinder
+com.companyname.primeornot
 ├── MainActivity.kt        edge-to-edge host, ViewModel + audio + ad consent
 ├── ads/
 │   └── BannerAd.kt        anchored adaptive AdMob banner, retry screen only
@@ -52,7 +52,7 @@ already engaged) and drops straight into `Playing`.
 
 ## Game rules
 
-- **Direction:** right swipe = prime, left swipe = not prime (matches Tinder's
+- **Direction:** right swipe = prime, left swipe = not prime (matches the familiar
   right-swipe-for-yes instinct; the old build had it inverted).
 - **Run:** one point per correct guess; the first wrong guess or a timeout ends
   the run and a restart starts from zero.
@@ -117,7 +117,7 @@ in-memory fake and never touch disk.
   it at 0.96 scale, and a blank surface at 0.92, each nudged up a few dp so the
   deck reads as endless.
 - Horizontal drag sets translation and up to 12° rotation. PRIME/NOT PRIME
-  stamps fade in with drag progress, on the side Tinder puts its labels.
+  stamps fade in with drag progress, on the outer edges of the card.
 - Releasing past 32% of the card width flings the card off-screen, then commits
   the guess; below threshold it springs back. Gestures are ignored when the
   phase is not `Playing`.
@@ -184,8 +184,9 @@ composables at all, so a 5–7 s round is never interrupted or shortened.
   contains Google's sample publisher `3940256099942544`. There is no silent
   fallback; `-PALLOW_TEST_ADS=true` opts into a test-ID release build for local
   checks only.
-- Play Console work (not in the repo): data-safety declaration incl. `AD_ID`,
-  `app-ads.txt`, and the child-directed decision for this maths game.
+- The Play listing URL (`https://quickben22.github.io/`) hosts the privacy
+  policy and the generated `app-ads.txt`; `tools/write_app_ads_txt.ps1` derives
+  the publisher line from `admob.appId` so the two cannot disagree.
 
 ## Testing
 
@@ -234,12 +235,29 @@ environment variables. `assembleRelease` fails via `validateReleaseAdIds` when
 they are missing or still test IDs; `-PALLOW_TEST_ADS=true` is the local-only
 escape hatch. See [`README.md`](../README.md#admob-setup).
 
+## Release
+
+The Play listing is `Prime or Not` / `com.companyname.primeornot`, version
+`2.0.0` (`versionCode 3`). `app/build.gradle.kts` keeps both version values as
+constants and reads the 2020 upload key from `local.properties` (never
+committed):
+
+- `validateReleaseSigning` fails `bundleRelease` without a usable keystore.
+- `validateReleaseAdIds` fails it without real AdMob IDs.
+- `verifyReleaseBundle` rebuilds, checks the package/version string in the
+  bundle manifest, and rejects a bundle signed by anything other than the Play
+  upload certificate.
+
+The launcher icon is an adaptive icon (`mipmap-anydpi-v26`) with a monochrome
+layer, plus legacy PNG mipmaps for API 24–25. The public privacy policy,
+`app-ads.txt` and store copy live under `docs/`; see
+[`PLAY_RELEASE.md`](PLAY_RELEASE.md) for the Signing, AdMob and Play Console
+runbook.
+
 ## Possible next steps
 
-- Adaptive launcher icon (`mipmap-anydpi-v26`) around the existing vector.
 - A mute toggle persisted alongside the score stats.
-- Add a release signing config (the APK is unsigned today), set the real AdMob
-  IDs via `local.properties`, then add `app-ads.txt` and the Play Console
-  data-safety entries.
 - Persist the in-progress run across process death if sessions should survive.
 - Per-tier leaderboards or a run history if Room becomes worth the dependency.
+- Reset to a dedicated upload key (the current one is shared with a 2019
+  project; Play App Signing makes this safe but it requires a Play-side reset).
