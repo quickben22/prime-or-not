@@ -884,3 +884,64 @@ tools/
 ├── generate_sfx.ps1
 └── write_app_ads_txt.ps1        AdMob ID -> app-ads.txt
 ```
+
+---
+
+## 12. Repository security audit (9 November 2026)
+
+Status: full scan before the GitHub repo was linked publicly (Reddit build
+story). **No secrets found; no remediation needed inside the repo.** The action
+items live outside it.
+
+Scope of the scan:
+
+- every tracked file (`git ls-files`) plus `git check-ignore` on the sensitive
+  paths;
+- the complete history diff (`git log --all -p`) with pickaxe searches
+  (`-S`) for `storePassword`, `keyPassword`, `admob.appId` and `ca-app-pub`;
+- every file ever added (`git log --diff-filter=A`) for key/cert/properties
+  file names;
+- the largest objects in history, to catch a key file under a wrong name;
+- PEM/`BEGIN`-style key material across all diffs.
+
+### Verified clean
+
+| Check | Result |
+|---|---|
+| Tracked tree | No `.jks` / `.p12` / `.pfx` / `.der` / keystore files; binaries are only launcher icons and sound WAVs |
+| `local.properties` (real signing + AdMob values) | Never committed in any commit; ignored (`.gitignore:4`) and confirmed by `git check-ignore` |
+| Key-file ignore rules | `*.jks`, `*.keystore`, `*.p12`, `*.pfx`, `keystore.properties`, `upload_cert.der` all covered (§2/commit `3b29db4`) |
+| Passwords in history | Every `storePassword=` / `keyPassword=` line ever committed is the `…` documentation placeholder; `app/build.gradle.kts` reads real values from properties/environment at build time |
+| Largest objects ever | Store screenshots and graphics only; no disguised key files |
+| PEM / private-key markers | Zero hits across all commits |
+| `gradle.properties` | Build settings only |
+| `REDDIT_POST.md` | Intentionally untracked |
+
+### Public by design (not secrets)
+
+- **Upload-certificate SHA-256 and metadata** (alias, RSA size, serial,
+  subject, validity): fingerprints are one-way hashes *of the public
+  certificate*. Play Console shows the same value to anyone with console
+  access, and fingerprints are shared routinely for API configuration. They
+  can only be used to verify who signed a build — never to sign one.
+- **Artifact SHA-256s recorded in the work log**: integrity seals for exact
+  build outputs; public by design.
+- **`docs/site/app-ads.txt` and the publisher ID `pub-3535032153893847`**: must
+  be public; that is the whole purpose of the file.
+- **Real AdMob app/banner IDs in §3**: unit IDs are not credentials — they ship
+  inside every APK and are extractable from any install. Accepted residual
+  risk: a third-party app could point its banner at our unit and produce
+  invalid traffic on the account. If AdMob console activity ever looks wrong,
+  disable or rotate the banner unit in the AdMob console.
+
+### Action items outside the repo (as in §9)
+
+- The old BetsKeeper folder on `D:\` still holds the 2019
+  `quickben.keystore` — the same key pair as the current upload key — with a
+  plaintext password in `AndroidTest3\aab.txt`. Delete that plaintext file and
+  restrict access to the folder; the Play-side upload-key reset remains the
+  clean long-term fix because Play App Signing holds the actual app-signing
+  key.
+- Keep the `~\.android-keys\` + `local.properties` offline backup current and
+  verify it exists after the next version bump.
+
