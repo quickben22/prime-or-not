@@ -2,6 +2,9 @@
 build/
 .kotlin/
 local.properties
+
+# Local-only planning documents (never publish).
+/private/
 *.iml
 .idea/
 
