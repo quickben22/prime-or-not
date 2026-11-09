@@ -7,3 +7,13 @@
 -keep class * extends androidx.room.RoomDatabase {
     <init>();
 }
+
+# WindowCompat.enableEdgeToEdge() deliberately calls the platform
+# setStatusBarColor/setNavigationBarColor APIs on older Android versions to
+# provide backward-compatible edge-to-edge. Without this rule, R8 inlines the
+# helper into MainActivity, so Play's Android 15 edge-to-edge scanner attributes
+# those legacy library calls to the app. Keep the helper as its own AndroidX
+# class so the app no longer owns any deprecated edge-to-edge call site.
+-keep class androidx.core.view.WindowCompat {
+    public static void enableEdgeToEdge(android.view.Window);
+}

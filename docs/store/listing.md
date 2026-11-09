@@ -8,6 +8,7 @@ text between the rules; do not add markdown.
 | App name | 30 | `Prime or Not` |
 | Short description | 80 | see below |
 | Full description | 4000 | see below |
+| Store listing languages | — | English (United States) only |
 | App category | — | Games › Puzzle |
 | Tags | — | Puzzle, Brain training, Educational |
 | Contact email | — | `quickben22@gmail.com` |
@@ -15,49 +16,79 @@ text between the rules; do not add markdown.
 | Website | — | `https://quickben22.github.io/` |
 | Ads | — | Yes, contains ads |
 
-## Short description (78 characters)
+Before uploading, run the listing check:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/check_store_listing.ps1
+```
+
+It enforces the 80/4000 character limits and fails if the short and full
+descriptions are identical.
+
+## Short description (70 characters)
 
 ```text
-Swipe right for prime, left for not prime. Beat the clock and build a streak.
+A fast number game: decide if each card is prime before time runs out.
 ```
 
 ## Full description
 
 ```text
-A number appears. You have five seconds to decide.
+Prime or Not is a quick decision game about prime numbers. Each card shows one
+whole number, and you have a few seconds to decide whether it is prime. Swipe
+right for prime, left for not prime, then take the next card.
 
-Swipe right for prime. Swipe left for not prime.
+Classic mode
 
-That is the whole game — and it gets hard much faster than you expect. Every
-correct answer adds a point and resets the clock. The first wrong swipe or the
-first timeout ends the run.
+• Every correct answer adds a point and gives you a fresh timer. The first wrong
+  answer or timeout ends the run.
+• Cards start in the two-digit range, move to three digits after ten correct
+  answers, and then to four digits after twenty-five.
+• The time limit follows the card: five seconds for two digits, six for three,
+  seven for four.
+• Half the cards are prime and half are composite. From three digits up, easy
+  composites such as even numbers and multiples of five are excluded, so
+  guessing from the last digit will not work.
+• When a run ends, the summary shows the correct answer for the card that beat
+  you, including its factorization when it is composite, along with your score,
+  accuracy, best streak and fastest answer.
 
-WHY IT WORKS
+Practice mode
 
-• One rule, no tutorial. Start playing in two seconds.
-• Two-digit cards for the first ten points, then three digits, then four.
-• The clock tightens as you climb: 5 seconds, then 6, then 7.
-• Composites are built to look prime — odd numbers, no obvious factors — so
-  guessing "it's even" will not carry you.
-• The run summary shows the factorization of the card that beat you, plus your
-  best streak, accuracy and fastest answer.
-• A daily streak and a saved best score give you a reason to come back.
+• Five cards from 1 to 100, with no timer, no score and no streak.
+• After each answer, the app explains whether the number is prime or composite
+  and why.
+• If the number 1 appears, the app treats it as a special case: it is neither
+  prime nor composite.
 
-NO CLUTTER
+How to Play and My Records
 
-No account, no sign-in, no tutorial, no energy timers, no pop-ups between cards.
-One banner ad appears on the game-over screen only, never during a round.
+• How to Play explains prime numbers, composite numbers and the rule for 1 in
+  plain language.
+• My Records keeps your best Classic score, longest streak, overall accuracy,
+  daily progress and recent completed runs on your device.
+• An interrupted Classic run can be resumed or discarded from the main menu.
 
-BUILT FOR QUICK SESSIONS
+No account is needed and the game works offline. Scores stay on the device. A
+single banner ad appears on the game-over screen only; there are no ads during a
+round and no pop-ups between cards.
 
-A run lasts seconds, a good run lasts a minute. Perfect for a queue, a commute,
-or the gap between two things.
-
-Whether you are refreshing mental arithmetic or chasing a personal best, Prime
-or Not turns a five-second decision into a habit.
+A run can last seconds, and a good run can last a minute, so Prime or Not fits a
+queue, a commute or a short break. It is a simple way to practise mental
+arithmetic and chase a personal best.
 
 Swipe carefully.
 ```
+
+## Store listing languages
+
+The listing is **English (United States) only**. In Play Console, keep the
+default language and remove every other language, including English variants.
+Do not add machine translations, and never paste the short description into the
+full description field.
+
+If a translation is added later, it must have its own short and full text. Play
+rejects listings where the translated short and long descriptions are identical.
 
 ## Graphics checklist
 
@@ -93,6 +124,7 @@ contains an ad.
 - **App name:** Prime or Not (matches `@string/app_name`)
 - **Package:** `com.companyname.primeornot` (cannot change)
 - **Default language:** English (United States)
+- **Translations:** none — English only
 - **Free / Paid:** Free
 - **Content rating:** Everyone / PEGI 3 (questionnaire answers: no violence, no
   language, no controlled substances, no gambling, no user-generated content,
