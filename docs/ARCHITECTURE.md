@@ -309,7 +309,7 @@ escape hatch. See [`README.md`](../README.md#admob-setup).
 ## Release
 
 The Play listing is `Prime or Not` / `com.companyname.primeornot`, version
-`2.1.2` (`versionCode 7`). `app/build.gradle.kts` keeps both version values as
+`2.1.2` (`versionCode 8`). `app/build.gradle.kts` keeps both version values as
 constants and reads the 2020 upload key from `local.properties` (never
 committed):
 

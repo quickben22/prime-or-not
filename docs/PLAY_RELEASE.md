@@ -1,14 +1,16 @@
 # Prime or Not — Play release runbook and work log
 
-Status: **2.1.2 ready to upload.** `versionCode 5` (2.1.0) crashed on launch in
-the release build because R8 stripped a reflectively-used Room constructor (see
-the 9 November hotfix entry in §10). `app/proguard-rules.pro` now keeps it, and
-2.1.1 fixed the crash. Play then rejected the 2.1.1 upload because a translated
-store listing used the same text for the short and full descriptions. 2.1.2
-keeps the startup fix, makes the listing **English (United States) only**, and
-addresses the Play technical-quality recommendations: the transitive AndroidX
-Fragment SDK is upgraded and edge-to-edge now uses the current `WindowCompat`
-API. Upload `app/build/outputs/bundle/release/app-release.aab` to Internal
+Status: **2.1.2 ready to upload (versionCode 8).** `versionCode 5` (2.1.0)
+crashed on launch in the release build because R8 stripped a reflectively-used
+Room constructor (see the 9 November hotfix entry in §10).
+`app/proguard-rules.pro` now keeps it, and 2.1.1 fixed the crash. Play then
+rejected the 2.1.1 upload because a translated store listing used the same text
+for the short and full descriptions. 2.1.2 keeps the startup fix, makes the
+listing **English (United States) only**, and addresses the Play
+technical-quality recommendations: the transitive AndroidX Fragment SDK is
+upgraded and edge-to-edge now uses the current `WindowCompat` API. The store
+listing, feature graphic and eight phone screenshots were refreshed for this
+upload. Upload `app/build/outputs/bundle/release/app-release.aab` to Internal
 testing (§8). After that: smoke test, Closed testing, Production, and the App
 content forms.
 
@@ -27,7 +29,7 @@ in Play Console and AdMob.
 | Play listing | `PRIME OR NOT` (existing app, do not create a new one) |
 | Display name | **Prime or Not** |
 | Package / applicationId | `com.companyname.primeornot` — permanent |
-| This upload | `versionCode 7`, `versionName 2.1.2` |
+| This upload | `versionCode 8`, `versionName 2.1.2` |
 | Previous uploads | `versionCode 6` / `2.1.1` (rejected for store metadata), `versionCode 5` / `2.1.0` (release-only R8 crash), `versionCode 2` / `1.1` (Closed testing – Alpha), `versionCode 1` / `1.0` (Internal testing) |
 | minSdk / targetSdk / compileSdk | 24 / 37 / 37 |
 | Category | Games › Puzzle |
@@ -246,7 +248,7 @@ git push
 
 ### Version and Play metadata
 
-- `versionCode 7`, `versionName 2.1.2`.
+- `versionCode 8`, `versionName 2.1.2`.
 - Release signing config sourced from `local.properties` / Gradle properties /
   environment variables, never committed.
 - `validateReleaseSigning` and `verifyReleaseBundle` tasks (see §2).
@@ -377,22 +379,25 @@ reflectively-used `WorkDatabase_Impl.<init>()` constructor.
   full-bleed legacy square mipmaps.
 - `assembleDebug`: debug APK 18,156,535 bytes, installs and runs on API 35.
 - `assembleRelease` + install on `emulator-5554` (API 35, Pixel 5): version
-  `2.1.2` (code 7), release APK 3,686,054 bytes. It cold-starts,
-  `MainActivity` stays resumed, `pidof` returns a process, the crash buffer is
-  empty and `dumpsys activity exit-info` has no entry. This is the check that
-  was missing for `versionCode 5`.
-- Edge-to-edge screenshot on the same run: transparent status bar with light
-  icons, content padded below the status bar, and the gesture bar clear at the
-  bottom. A Classic swipe scored 1, and **BEST 1** survived
+  `2.1.2` (code 8), release APK 3,686,054 bytes, SHA-256
+  `FF397C150558B7A8D1468924941895629D16A5330627F6A4C64BCEEC5F867D50`. It
+  cold-starts, `MainActivity` is the focused window, `pidof` returns a process,
+  the crash buffer is empty and `dumpsys activity exit-info` has no entry. This
+  is the check that was missing for `versionCode 5`. The full swipe, timeout and
+  persistence pass was run on the identical code-7 build; only the versionCode
+  changed in this rebuild.
+- Edge-to-edge screenshot on the earlier code-7 run: transparent status bar with
+  light icons, content padded below the status bar, and the gesture bar clear at
+  the bottom. A Classic swipe scored 1, and **BEST 1** survived
   `am force-stop` + cold relaunch. Repeat the same smoke test after installing
   from the internal-testing opt-in link.
 - `verifyReleaseBundle` with the real IDs: **passed** — package
-  `com.companyname.primeornot`, version `2.1.2` (code 7), signer
-  `2B:41:8C:E6:…:20:84`, 7,248 KiB (7,421,498 bytes). The bundle manifest
+  `com.companyname.primeornot`, version `2.1.2` (code 8), signer
+  `2B:41:8C:E6:…:20:84`, 7,247 KiB (7,421,490 bytes). The bundle manifest
   contains `ca-app-pub-3535032153893847~2009618845`, `classes.dex` contains the
   banner unit `2509721149`, and Google's sample publisher `3940256099942544`
   appears nowhere. SHA-256 of the artifact:
-  `1E057EC4B886A66E25335E0BD9BEAE2E62A5D9BB44B2DC17CD91114BD42E5BDB`.
+  `241CAF8831B811CBE1ECB15550817C2F304F7FD3572DF53B957829E5595BA16D`.
 - `dependencyInsight --configuration releaseRuntimeClasspath` resolves
   `androidx.fragment:fragment:1.9.1` (both the 1.0.0 and transitively requested
   1.1.0 nodes are upgraded).
@@ -525,14 +530,14 @@ information — the app requests none of those permissions.
 2. Keep the existing **Play App Signing** setup; do not create a new key.
 3. Under **App bundles → Upload**, select
    `C:\Users\armin\Documents\Prime or not\app\build\outputs\bundle\release\app-release.aab`
-   (7,421,498 bytes, SHA-256
-   `1E057EC4B886A66E25335E0BD9BEAE2E62A5D9BB44B2DC17CD91114BD42E5BDB`).
+   (7,421,490 bytes, SHA-256
+   `241CAF8831B811CBE1ECB15550817C2F304F7FD3572DF53B957829E5595BA16D`).
    Upload the AAB, never an APK, and never a build made with
    `-PALLOW_TEST_ADS=true`.
 4. Wait for “bundle uploaded successfully”; the release name fills in as
-   **2.1.2 (7)**. Paste the release notes below.
+   **2.1.2 (8)**. Paste the release notes below.
 5. Resolve any **errors** Play reports. Warnings can be reviewed and accepted.
-6. **Save → Review release**, confirm version **7 (2.1.2)** and the target
+6. **Save → Review release**, confirm version **8 (2.1.2)** and the target
    countries, then **Start rollout to Internal testing → Rollout**.
 7. If **Managed publishing** is enabled, go to **Publishing overview** and click
    **Publish changes**. Internal testing normally goes live in minutes.
@@ -547,7 +552,7 @@ information — the app requests none of those permissions.
 **Promotion**
 
 10. **Closed testing → Alpha → Create new release → Add from library**, select
-    `2.1.2 (7)`, and roll out to the existing testers.
+    `2.1.2 (8)`, and roll out to the existing testers.
 11. When production is unlocked: **Production → Create new release**, same
     bundle, staged rollout (e.g. 20% → 100%).
 12. If Play shows **Apply for production access** instead, complete that form
@@ -555,7 +560,7 @@ information — the app requests none of those permissions.
     12-tester rule applies only to personal developer accounts created after
     13 November 2023; this account predates it.
 
-After the upload, **App bundle explorer → version 7** shows the app-signing
+After the upload, **App bundle explorer → version 8** shows the app-signing
 certificate, which intentionally differs from the upload certificate.
 
 ### Release notes (copy/paste)
@@ -617,6 +622,23 @@ URLs are safe to paste into Play now.
 
 ### 9 November 2026
 
+**Store listing refresh and versionCode 8**
+
+- Rewrote `docs/store/listing.md` with an English (United States) short
+  description (70 characters) and a distinct 1,996-character full description;
+  `tools/check_store_listing.ps1` passes.
+- Rendered `docs/store/feature-graphic-1024x500.png` from the repo HTML/CSS
+  pipeline: 1024×500, 24-bit RGB, no alpha, 361,514 bytes.
+- Replaced the old five screenshots with eight 1080×1920 captures
+  (`phone-01-home` … `phone-08-new-best`) taken from the release APK with a
+  seeded BEST 23, 6-day streak and 18 games.
+- Bumped to `versionCode 8` / `versionName 2.1.2` for the new upload; the app
+  code is unchanged from versionCode 7. `verifyReleaseBundle` passed again:
+  7,421,490 bytes, SHA-256
+  `241CAF8831B811CBE1ECB15550817C2F304F7FD3572DF53B957829E5595BA16D`.
+- Installed the code-8 release APK on `emulator-5554` (API 35): cold start,
+  focused `MainActivity`, live pid, empty crash buffer.
+
 **2.1.2: Play technical-quality fixes**
 
 - Play flagged `androidx.fragment:fragment:1.1.0` as outdated. It arrived
@@ -630,7 +652,8 @@ URLs are safe to paste into Play now.
   `MainActivity` with `WindowCompat.enableEdgeToEdge(window)` and explicitly
   kept light system-bar icons for the always-dark theme. Every screen already
   applies `safeDrawingPadding()` for system-bar and display-cutout insets.
-- Bumped to `versionCode 7` / `versionName 2.1.2`.
+- Bumped to `versionCode 7` / `versionName 2.1.2` (later rebuilt as
+  `versionCode 8` for the store-graphics refresh).
 - Added a `-keep` rule for `androidx.core.view.WindowCompat.enableEdgeToEdge`
   in `app/proguard-rules.pro`. Without it R8 inlined the helper into
   `MainActivity`, which made Play's static scanner attribute the helper's
@@ -663,8 +686,8 @@ URLs are safe to paste into Play now.
   the default language; paste the new short and full descriptions; then
   **Publishing overview → Send changes for review**.
 - The rejected 2.1.1 release cannot be resubmitted with the same version code, so
-  the fix ships as `versionCode 7` / `versionName 2.1.2` (see the 2.1.2 entry
-  above).
+  the fix ships as `versionCode 7` / `versionName 2.1.2`, later rebuilt as
+  `versionCode 8` for the store-graphics refresh (see the 2.1.2 entries above).
 
 **2.1.1 hotfix: release-only startup crash**
 

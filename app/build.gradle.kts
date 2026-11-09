@@ -15,10 +15,11 @@ val admobTestPublisherId = "3940256099942544"
 
 // Single source of truth for the Play upload. versionCode 3 shipped 2.0.0 and
 // 4 shipped 2.0.1; 5 shipped the Phase 1/2 work with a release-only R8 startup
-// crash; 6 fixed that crash but was rejected for store metadata. 7 fixes the
-// metadata plus the Play edge-to-edge and outdated-SDK recommendations.
+// crash; 6 fixed that crash but was rejected for store metadata; 7 fixed the
+// metadata plus the Play edge-to-edge and outdated-SDK recommendations, and 8
+// is a re-upload of the same 2.1.2 code after the store listing refresh.
 // It must increase by at least one for every upload.
-val appVersionCode = 7
+val appVersionCode = 8
 val appVersionName = "2.1.2"
 
 /**
