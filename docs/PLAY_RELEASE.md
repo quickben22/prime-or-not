@@ -1,10 +1,12 @@
 # Prime or Not — Play release runbook and work log
 
-Status: **ready to upload.** The signed bundle is built and verified, the upload
-certificate is confirmed, both repos are pushed, and the privacy site is live.
-The next action is uploading `app/build/outputs/bundle/release/app-release.aab`
-to Internal testing (§8). After that: smoke test, Closed testing, Production,
-and the App content forms.
+Status: **2.1.1 hotfix ready to upload.** `versionCode 5` (2.1.0) crashed on
+launch in the release build because R8 stripped a reflectively-used Room
+constructor (see the 9 November hotfix entry in §10). `app/proguard-rules.pro`
+now keeps it, the signed bundle is rebuilt and verified, and the release APK was
+cold-started on a device. Upload
+`app/build/outputs/bundle/release/app-release.aab` to Internal testing (§8).
+After that: smoke test, Closed testing, Production, and the App content forms.
 
 Last updated: 9 November 2026.
 
@@ -21,8 +23,8 @@ in Play Console and AdMob.
 | Play listing | `PRIME OR NOT` (existing app, do not create a new one) |
 | Display name | **Prime or Not** |
 | Package / applicationId | `com.companyname.primeornot` — permanent |
-| This upload | `versionCode 5`, `versionName 2.1.0` |
-| Previous uploads | `versionCode 2` / `1.1` (Closed testing – Alpha), `versionCode 1` / `1.0` (Internal testing) |
+| This upload | `versionCode 6`, `versionName 2.1.1` |
+| Previous uploads | `versionCode 5` / `2.1.0` (release-only R8 crash), `versionCode 2` / `1.1` (Closed testing – Alpha), `versionCode 1` / `1.0` (Internal testing) |
 | minSdk / targetSdk / compileSdk | 24 / 37 / 37 |
 | Category | Games › Puzzle |
 | Price | Free, contains ads, no in-app purchases |
@@ -31,8 +33,9 @@ The package was kept because package names are permanent; it still reads
 `com.companyname.…` from the 2020 Android Studio template, and renaming it
 would create a second app with no install history. `versionName` jumped from 1.1
 to 2.0.0 because this is a full Kotlin/Compose rewrite, not a patch; 2.0.1 was
-the 7 November icon change, and 2.1.0 is the Phase 1/2 stability, records,
-Practice and green-brand release.
+the 7 November icon change, 2.1.0 is the Phase 1/2 stability, records,
+Practice and green-brand release, and 2.1.1 fixes the release-only startup
+crash found in 2.1.0.
 
 `versionCode` must keep increasing. It is now a single constant in
 `app/build.gradle.kts` (`appVersionCode` / `appVersionName`) so the manifest,
@@ -95,7 +98,7 @@ recreated, repeat this check before uploading.
 - `validateReleaseSigning` runs before `bundleRelease` and fails when any of the
   four values is blank or the keystore file is missing.
 - `verifyReleaseBundle` builds the bundle, checks the manifest contains
-  `com.companyname.primeornot` and the current `appVersionName` (`2.1.0`), then runs `keytool -printcert
+  `com.companyname.primeornot` and the current `appVersionName` (`2.1.1`), then runs `keytool -printcert
   -jarfile` and fails unless the signer is the fingerprint above.
 
 ---
@@ -237,7 +240,7 @@ git push
 
 ### Version and Play metadata
 
-- `versionCode 5`, `versionName 2.1.0`.
+- `versionCode 6`, `versionName 2.1.1`.
 - Release signing config sourced from `local.properties` / Gradle properties /
   environment variables, never committed.
 - `validateReleaseSigning` and `verifyReleaseBundle` tasks (see §2).
@@ -293,9 +296,10 @@ feature graphic uses the same mark; every accent is the app green `#00C2A8`.
   `keystore.properties`, `local.properties` and `upload_cert.der`.
 - `upload_cert.der` was moved out of the repo to `~\.android-keys\`.
 
-2.1.0 adds resumable Classic sessions, Classic-only records and streak rules,
+2.1.x adds resumable Classic sessions, Classic-only records and streak rules,
 onboarding/How to Play, isolated Practice, teaching tips and the rebranded
-green mark. The core swipe, timer and scoring rules are unchanged; see §10 and
+green mark; 2.1.1 is the same feature set with the release startup fix. The core
+swipe, timer and scoring rules are unchanged; see §10 and
 `docs/ARCHITECTURE.md` for the full behaviour.
 
 ---
@@ -339,6 +343,24 @@ Local-only release smoke test with sample ads (never upload this):
 .\gradlew.bat assembleRelease -PALLOW_TEST_ADS=true
 ```
 
+### Smoke-test the signed release (required before upload)
+
+Debug builds do not run R8, so they cannot catch release-only failures — an
+R8 keep-rule crash shipped in `versionCode 5` exactly because only the debug
+build had been launched. Install the signed APK and cold-start it before every
+upload:
+
+```powershell
+$adb="$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
+& $adb -s <device> install -r app\build\outputs\apk\release\app-release.apk
+& $adb -s <device> shell am start -W -n com.companyname.primeornot/.MainActivity
+& $adb -s <device> shell pidof com.companyname.primeornot   # must print a pid
+```
+
+For the Play-delivered build, repeat the same check after installing from the
+internal-testing opt-in link. `verifyReleaseBundle` also fails if R8 removed the
+reflectively-used `WorkDatabase_Impl.<init>()` constructor.
+
 ### Result of the last run
 
 - `testDebugUnitTest`: **55 tests, 0 failures, 0 skipped** (7 suites).
@@ -346,22 +368,22 @@ Local-only release smoke test with sample ads (never upload this):
   (AGP is pinned deliberately, see `docs/ARCHITECTURE.md#build`),
   2 `PluralsCandidate`, and 5 `IconLauncherShape` for the intentionally
   full-bleed legacy square mipmaps.
-- `assembleDebug`: debug APK 18,861,009 bytes, installs and runs on API 35; the
-  green `1||0` mark renders on the launcher and on the in-app start card.
-- `bundleRelease` without AdMob IDs: **fails at `validateReleaseAdIds`**, as
-  designed. With the real IDs it builds.
+- `assembleDebug`: debug APK 18,053,786 bytes, installs and runs on API 35.
+- `assembleRelease` + install on `emulator-5554` (API 35, Pixel 5): version
+  `2.1.1` (code 6) cold-starts, `MainActivity` stays resumed, `pidof` returns a
+  process, the crash buffer is empty and `dumpsys activity exit-info` has no
+  entry. This is the check that was missing for `versionCode 5`.
 - `verifyReleaseBundle` with the real IDs: **passed** — package
-  `com.companyname.primeornot`, version `2.1.0` (code 5), signer
-  `2B:41:8C:E6:…:20:84`, 7,159 KiB. The bundle manifest contains
+  `com.companyname.primeornot`, version `2.1.1` (code 6), signer
+  `2B:41:8C:E6:…:20:84`, 7,232 KiB. The bundle manifest contains
   `ca-app-pub-3535032153893847~2009618845`, `classes.dex` contains the banner
   unit `2509721149`, and Google's sample publisher `3940256099942544` appears
   nowhere. SHA-256 of the artifact:
-  `615444CFF7276761DA9F56548A8ED4CC3AA8745E2E308701C5211DA3CED562C4`.
-- `verifyReleaseBundle -PALLOW_TEST_ADS=true` (used earlier to prove the signing
-  path before the IDs existed): also passed; that test-ad artifact was deleted.
+  `7528AB1331B26F81C5ED7FD14CE1D48E985A27B669EEA944EEFB1A51CEDD017F`.
+- The new WorkDatabase guard scans for exactly the `public void <init>()`
+  removal that the `versionCode 5` `usage.txt` contained.
 - `connectedDebugAndroidTest` on `emulator-5554` (API 35, Pixel 5):
-  **11/11 `GameScreenTest` cases, OK** on 9 November. Home and the Classic
-  Ready card were also inspected on-device with the green mark.
+  **11/11 `GameScreenTest` cases, OK** on 9 November.
 
 ---
 
@@ -469,28 +491,29 @@ information — the app requests none of those permissions.
 2. Keep the existing **Play App Signing** setup; do not create a new key.
 3. Under **App bundles → Upload**, select
    `C:\Users\armin\Documents\Prime or not\app\build\outputs\bundle\release\app-release.aab`
-   (7,331,072 bytes, SHA-256
-   `615444CFF7276761DA9F56548A8ED4CC3AA8745E2E308701C5211DA3CED562C4`).
+   (7,405,676 bytes, SHA-256
+   `7528AB1331B26F81C5ED7FD14CE1D48E985A27B669EEA944EEFB1A51CEDD017F`).
    Upload the AAB, never an APK, and never a build made with
    `-PALLOW_TEST_ADS=true`.
 4. Wait for “bundle uploaded successfully”; the release name fills in as
-   **2.1.0 (5)**. Paste the release notes below.
+   **2.1.1 (6)**. Paste the release notes below.
 5. Resolve any **errors** Play reports. Warnings can be reviewed and accepted.
-6. **Save → Review release**, confirm version **5 (2.1.0)** and the target
+6. **Save → Review release**, confirm version **6 (2.1.1)** and the target
    countries, then **Start rollout to Internal testing → Rollout**.
 7. If **Managed publishing** is enabled, go to **Publishing overview** and click
    **Publish changes**. Internal testing normally goes live in minutes.
 8. **Testers** tab: put your Google account in the list, copy the opt-in URL,
    open it on the phone, accept and install. Confirm the installed version is
-   **2.1.0**.
-9. Smoke-test: start screen, several swipes, one wrong answer, one timeout,
-   retry, then force-stop and confirm the best score persisted. Test on API 35
-   and, if available, API 24.
+   **2.1.1**.
+9. Smoke-test: **cold-start the app and confirm it stays in the foreground**,
+   then the start screen, several swipes, one wrong answer, one timeout, retry,
+   then force-stop and confirm the best score persisted. Test on API 35 and, if
+   available, API 24.
 
 **Promotion**
 
 10. **Closed testing → Alpha → Create new release → Add from library**, select
-    `2.1.0 (5)`, and roll out to the existing testers.
+    `2.1.1 (6)`, and roll out to the existing testers.
 11. When production is unlocked: **Production → Create new release**, same
     bundle, staged rollout (e.g. 20% → 100%).
 12. If Play shows **Apply for production access** instead, complete that form
@@ -498,17 +521,18 @@ information — the app requests none of those permissions.
     12-tester rule applies only to personal developer accounts created after
     13 November 2023; this account predates it.
 
-After the upload, **App bundle explorer → version 5** shows the app-signing
+After the upload, **App bundle explorer → version 6** shows the app-signing
 certificate, which intentionally differs from the upload certificate.
 
 ### Release notes (copy/paste)
 
 ```text
-2.1.0
+2.1.1
+• Fixes a crash on launch in the release build (2.1.0)
 • Resume or abandon an interrupted Classic run
 • Streak and records now track Classic only
 • Practice mode and teaching tips
-• New green 1||0 icon, store art and start card
+• Green 1||0 icon, store art and start card
 ```
 
 ---
@@ -520,9 +544,10 @@ certificate, which intentionally differs from the upload certificate.
 Fingerprint confirmed, repos pushed, site live. What is left:
 
 1. **Upload `app-release.aab`** — Internal testing → Create new release →
-   upload the AAB → release notes `2.1.0` (§8).
-2. **Smoke-test** the installed build (start, swipes, wrong answer, timeout,
-   retry, score persistence).
+   upload the AAB → release notes `2.1.1` (§8). This replaces the crashing
+   `versionCode 5`.
+2. **Smoke-test** the installed build: confirm it **stays open after launch**,
+   then start, swipes, wrong answer, timeout, retry, score persistence.
 3. **Promote** the same bundle to Closed testing → Alpha, then Production.
 4. **Complete the store listing and App content forms** (§8).
 5. **After the first install:** link the AdMob app to the Play listing and
@@ -554,6 +579,37 @@ URLs are safe to paste into Play now.
 
 ### 9 November 2026
 
+**2.1.1 hotfix: release-only startup crash**
+
+- Reported symptom: the Play-installed build "opens and minimizes immediately";
+  Android Studio debug builds worked. `dumpsys activity exit-info` on the Honor
+  device showed `reason=4 (APP CRASH(EXCEPTION))` on every launch
+  (`versionCode 3` and `5`).
+- Dropbox stack: `androidx.startup.InitializationProvider` →
+  `WorkManagerInitializer` → `WorkManagerImpl` → `WorkDatabase.create()` →
+  `Failed to create an instance of androidx.work.impl.WorkDatabase`.
+  The message is Room's `InstantiationException` from
+  `Class.forName(...).newInstance()`.
+- Cause: `play-services-ads:25.5.0` → `play-services-ads-api` →
+  `androidx.work:work-runtime:2.7.0` → `androidx.room:room-runtime:2.2.5`.
+  Room 2.2.5's consumer rule keeps the DB class name but not its no-arg
+  constructor; R8 full mode sees no caller and removes it.
+  `dexdump` of the uploaded `versionCode 5` bundle showed
+  `androidx.work.impl.WorkDatabase_Impl` with **no direct methods**, and
+  `usage.txt` listed `public void <init>()` as removed.
+- Fix: `app/proguard-rules.pro` now keeps `<init>()` on every
+  `RoomDatabase` subclass.
+- Verification: the rebuilt release APK's DEX contains
+  `WorkDatabase_Impl.<init>()V`; it was installed and cold-started on
+  `emulator-5554` (API 35), stayed resumed, and produced no crash-buffer or
+  `exit-info` entry.
+- Added a `verifyReleaseBundle` guard that fails if R8 removes
+  `WorkDatabase_Impl.<init>()`, and documented a mandatory signed-release
+  smoke test in §6.
+- Bumped to `versionCode 6` / `versionName 2.1.1`; `verifyReleaseBundle` passed
+  (7,405,676 bytes, SHA-256
+  `7528AB1331B26F81C5ED7FD14CE1D48E985A27B669EEA944EEFB1A51CEDD017F`).
+
 **Green brand and Phase 1/2 release**
 
 - Added `ui/PrimeLogo.kt`, a shared mark that draws the `1||0` foreground
@@ -569,8 +625,7 @@ URLs are safe to paste into Play now.
 - Phase 1/2: resumable/abandonable Classic runs, Classic-only records and
   streak rules, onboarding/How to Play, isolated Practice mode, teaching tips
   and the four-section My Records screen. Unit tests: **55 passing**.
-- Version stays `versionCode 5` / `versionName 2.1.0`; this build is still
-  unreleased. Home and the Classic Ready card were checked on
+- Home and the Classic Ready card were checked on
   `emulator-5554` (API 35), and `connectedDebugAndroidTest` passed **11/11**.
 
 ### 7 November 2026

@@ -14,10 +14,10 @@ val admobTestBannerUnitId = "ca-app-pub-3940256099942544/9214589741"
 val admobTestPublisherId = "3940256099942544"
 
 // Single source of truth for the Play upload. versionCode 3 shipped 2.0.0 and
-// 4 shipped 2.0.1; 5 ships the Phase 1/2 stability, records and Practice work.
-// It must increase by at least one for every upload.
-val appVersionCode = 5
-val appVersionName = "2.1.0"
+// 4 shipped 2.0.1; 5 shipped the Phase 1/2 work with a release-only R8 startup
+// crash; 6 fixes that crash. It must increase by at least one for every upload.
+val appVersionCode = 6
+val appVersionName = "2.1.1"
 
 /**
  * Real ad IDs are machine-specific, so they come from (in order) local.properties,
@@ -279,6 +279,29 @@ val verifyReleaseBundle = tasks.register("verifyReleaseBundle") {
             throw GradleException(
                 "Bundle is signed by the wrong key.\nExpected: $expectedSha256\nkeytool:\n$output",
             )
+        }
+
+        // Regression guard: R8 strips Room's reflectively-used no-arg constructor
+        // unless proguard-rules.pro keeps it, which crashes WorkManager at startup.
+        val usage = layout.buildDirectory.file("outputs/mapping/release/usage.txt").get().asFile
+        if (usage.isFile) {
+            var inWorkDatabase = false
+            var removedCtor = false
+            usage.forEachLine { line ->
+                if (line.isNotBlank() && !line.startsWith("    ")) {
+                    inWorkDatabase = line.trim() == "androidx.work.impl.WorkDatabase_Impl:"
+                } else if (inWorkDatabase && line.trim() == "public void <init>()") {
+                    removedCtor = true
+                }
+            }
+            if (removedCtor) {
+                throw GradleException(
+                    "R8 removed WorkDatabase_Impl.<init>(); WorkManager will crash at " +
+                        "startup. Check the Room keep rule in app/proguard-rules.pro.",
+                )
+            }
+        } else {
+            logger.warn("verifyReleaseBundle: no $usage; skipped the WorkDatabase guard.")
         }
 
         logger.lifecycle("verifyReleaseBundle: ${aab.name} OK")

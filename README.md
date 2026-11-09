@@ -6,8 +6,8 @@ extends the run by one point, the first miss or timeout ends it. The app now
 opens on a main menu with **Classic**, **Practice**, **How to Play** and
 **My Records**, plus resume support for an interrupted Classic run.
 
-- Play app: `Prime or Not`, package `com.companyname.primeornot`, `versionCode 5`,
-  `versionName 2.1.0`
+- Play app: `Prime or Not`, package `com.companyname.primeornot`, `versionCode 6`,
+  `versionName 2.1.1`
 - `minSdk 24`, `targetSdk`/`compileSdk 37`, AGP 9.1.1, Compose BOM 2026.09.00
 - Game logic is pure Kotlin under `app/src/main/java/com/companyname/primeornot/game`
 - Records, streak and the active run persist through one versioned preferences

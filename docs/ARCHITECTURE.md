@@ -309,7 +309,7 @@ escape hatch. See [`README.md`](../README.md#admob-setup).
 ## Release
 
 The Play listing is `Prime or Not` / `com.companyname.primeornot`, version
-`2.1.0` (`versionCode 5`). `app/build.gradle.kts` keeps both version values as
+`2.1.1` (`versionCode 6`). `app/build.gradle.kts` keeps both version values as
 constants and reads the 2020 upload key from `local.properties` (never
 committed):
 
@@ -318,6 +318,13 @@ committed):
 - `verifyReleaseBundle` rebuilds, checks the package/version string in the
   bundle manifest, and rejects a bundle signed by anything other than the Play
   upload certificate.
+
+`proguard-rules.pro` keeps `<init>()` on every `RoomDatabase` subclass. Room
+2.2.5 arrives transitively through `play-services-ads` → `work-runtime` and
+instantiates its generated `WorkDatabase_Impl` by reflection; R8 full mode
+otherwise removes the constructor, so `InitializationProvider` crashes the
+process before `MainActivity` (this shipped in `versionCode 5`). Always launch
+the signed release build before uploading — debug builds do not exercise R8.
 
 The launcher icon is an adaptive icon (`mipmap-anydpi-v26`) with a monochrome
 layer, plus legacy PNG mipmaps for API 24–25. Its `1||0` glyphs sit on the
