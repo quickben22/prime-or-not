@@ -6,7 +6,7 @@
   html, body { margin: 0; padding: 0; width: 1024px; height: 500px; overflow: hidden; }
   body {
     background:
-      radial-gradient(620px 420px at 72% 46%, rgba(0,194,168,0.18), rgba(0,194,168,0) 70%),
+      radial-gradient(620px 420px at 72% 46%, rgba(0,194,168,0.20), rgba(0,194,168,0) 70%),
       linear-gradient(135deg, #101820 0%, #16222B 58%, #0B1116 100%);
     font-family: "Segoe UI", Arial, sans-serif;
     color: #F7F8FA;
@@ -20,11 +20,15 @@
     background-size: 32px 32px;
     mask-image: linear-gradient(90deg, transparent 0%, black 35%, black 100%);
   }
-  .mark { position: absolute; left: 92px; top: 126px; width: 248px; height: 248px; }
+  .mark {
+    position: absolute; left: 92px; top: 126px; width: 248px; height: 248px;
+    border-radius: 52px;
+    box-shadow: 0 24px 60px rgba(0,194,168,0.28);
+  }
   .copy { position: absolute; left: 404px; top: 118px; width: 560px; }
   .eyebrow {
     font-size: 20px; font-weight: 700; letter-spacing: 4px;
-    color: #00C2A8; text-transform: uppercase; margin-bottom: 14px;
+    color: #4FE3CF; text-transform: uppercase; margin-bottom: 14px;
   }
   h1 {
     margin: 0; font-size: 76px; line-height: 0.96; font-weight: 900;
@@ -36,21 +40,15 @@
   .tag b { color: #FFFFFF; font-weight: 700; }
   .chip {
     display: inline-block; margin-top: 26px; padding: 10px 18px;
-    border: 1px solid rgba(0,194,168,0.55); border-radius: 999px;
-    color: #9FF0E3; font-size: 17px; font-weight: 700; letter-spacing: 2px;
+    border: 1px solid rgba(0,194,168,0.65); border-radius: 999px;
+    color: #9FF0E4; font-size: 17px; font-weight: 700; letter-spacing: 2px;
     text-transform: uppercase;
   }
 </style>
 </head>
 <body>
   <div class="grid"></div>
-  <svg class="mark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108">
-    <rect width="108" height="108" rx="24" fill="#101820"/>
-    <path fill="#00C2A8" fill-rule="nonzero"
-          d="M54,23a31,31 0 1 0 .1,0M54,29.5a24.5,24.5 0 1 1 -.1,0"/>
-    <path fill="#FFFFFF" fill-rule="evenodd"
-          d="M42,34H60A13,13 0 0 1 60,60H50V74H42ZM50,42H59A5,5 0 0 1 59,52H50Z"/>
-  </svg>
+  <img class="mark" src="icon-source.svg" alt="">
   <div class="copy">
     <div class="eyebrow">Swipe · Think · Score</div>
     <h1>Prime<br><span class="accent">or Not</span></h1>

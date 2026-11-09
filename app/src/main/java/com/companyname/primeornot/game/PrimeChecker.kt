@@ -15,6 +15,15 @@ object PrimeChecker {
         return isPrimeByTrialDivision(value)
     }
 
+    /** Every prime up to [limit], ascending. Used for teaching content. */
+    fun primesUpTo(limit: Int): List<Int> = (2..limit).filter(::isPrime)
+
+    /** Smallest prime factor, or null for values below 2 and for primes. */
+    fun smallestPrimeFactor(value: Int): Int? {
+        if (value < 2 || isPrime(value)) return null
+        return factorization(value).firstOrNull()
+    }
+
     /** Prime factors in ascending order, e.g. 91 -> [7, 13]. Empty for values below 2. */
     fun factorization(value: Int): List<Int> {
         if (value < 2) return emptyList()

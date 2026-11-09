@@ -113,7 +113,7 @@ fun GameScreen(
     onStart: () -> Unit = {},
     effects: Flow<GameEffect> = emptyFlow(),
     gameOverAd: (@Composable () -> Unit)? = null,
-    onPrivacyOptions: (() -> Unit)? = null,
+    onExit: (() -> Unit)? = null,
 ) {
     val view = LocalView.current
 
@@ -213,6 +213,7 @@ fun GameScreen(
                     if (state.phase == GamePhase.Ready) {
                         ReadyCard(
                             onStart = onStart,
+                            resumed = state.isResumed,
                             modifier = Modifier.matchParentSize(),
                         )
                     } else {
@@ -256,13 +257,18 @@ fun GameScreen(
                 color = PrimeTextMuted,
                 textAlign = TextAlign.Center,
             )
-            if (state.phase == GamePhase.Ready && onPrivacyOptions != null) {
+            if (state.phase == GamePhase.Ready) {
+                Spacer(Modifier.height(10.dp))
+                val tip = remember { TeachingTips.rotatingTip(Random.nextInt(TeachingTips.all.size)) }
+                TeachingTipCard(tip = tip, compact = true)
+            }
+            if (state.phase == GamePhase.Ready && onExit != null) {
                 TextButton(
-                    onClick = onPrivacyOptions,
-                    modifier = Modifier.testTag("privacyOptions"),
+                    onClick = onExit,
+                    modifier = Modifier.testTag("exitRun"),
                 ) {
                     Text(
-                        text = stringResource(R.string.privacy_options),
+                        text = stringResource(R.string.main_menu),
                         style = MaterialTheme.typography.labelSmall,
                         color = PrimeTextMuted,
                     )
@@ -322,6 +328,7 @@ fun GameScreen(
                 onRestart = onRestart,
                 modifier = Modifier.fillMaxSize(),
                 bottomContent = gameOverAd,
+                onHome = onExit,
             )
         }
     }
@@ -399,7 +406,7 @@ private fun LivingBackground(state: GameUiState, modifier: Modifier = Modifier) 
 }
 
 @Composable
-private fun ReadyCard(onStart: () -> Unit, modifier: Modifier = Modifier) {
+private fun ReadyCard(onStart: () -> Unit, resumed: Boolean, modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier
             .testTag("readyCard")
@@ -425,23 +432,12 @@ private fun ReadyCard(onStart: () -> Unit, modifier: Modifier = Modifier) {
                 modifier = Modifier.align(Alignment.Center),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(84.dp)
-                        .clip(CircleShape)
-                        .background(PrimeAccent),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = "P",
-                        color = PrimeBackground,
-                        fontSize = 42.sp,
-                        fontWeight = FontWeight.Black,
-                    )
-                }
+                PrimeLogo(modifier = Modifier.size(84.dp))
                 Spacer(Modifier.height(20.dp))
                 Text(
-                    text = stringResource(R.string.tap_to_start),
+                    text = stringResource(
+                        if (resumed) R.string.tap_to_continue else R.string.tap_to_start,
+                    ),
                     color = PrimeInk,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Black,
@@ -449,7 +445,9 @@ private fun ReadyCard(onStart: () -> Unit, modifier: Modifier = Modifier) {
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    text = stringResource(R.string.tap_to_start_hint),
+                    text = stringResource(
+                        if (resumed) R.string.tap_to_continue_hint else R.string.tap_to_start_hint,
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
                     color = PrimeInk.copy(alpha = 0.55f),
                     textAlign = TextAlign.Center,

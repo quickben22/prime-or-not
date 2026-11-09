@@ -51,6 +51,15 @@ class CardDeck(private val random: Random = Random.Default) {
         used.clear()
     }
 
+    /** Values already dealt in this run, for persisting an in-progress deck. */
+    fun usedValues(): List<Int> = used.toList()
+
+    /** Rebuilds the no-repeat state after an interrupted run is resumed. */
+    fun restoreUsed(values: Collection<Int>) {
+        used.clear()
+        used.addAll(values)
+    }
+
     /** Random starting point, then a linear scan so a nearly exhausted pool still yields a value. */
     private fun pickUnused(values: IntArray): Int? {
         if (values.isEmpty()) return null

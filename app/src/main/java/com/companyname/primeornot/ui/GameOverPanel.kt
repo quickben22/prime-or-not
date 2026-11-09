@@ -20,6 +20,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,6 +59,7 @@ fun GameOverPanel(
     onRestart: () -> Unit,
     modifier: Modifier = Modifier,
     bottomContent: (@Composable () -> Unit)? = null,
+    onHome: (() -> Unit)? = null,
 ) {
     Box(modifier = modifier) {
         // Scrim and tap blocker live behind the content: taps outside the panel
@@ -85,7 +87,7 @@ fun GameOverPanel(
                     color = PrimeSurface,
                     tonalElevation = 6.dp,
                 ) {
-                    GameOverContent(state = state, onRestart = onRestart)
+                    GameOverContent(state = state, onRestart = onRestart, onHome = onHome)
                 }
             }
 
@@ -106,6 +108,7 @@ fun GameOverPanel(
 private fun GameOverContent(
     state: GameUiState,
     onRestart: () -> Unit,
+    onHome: (() -> Unit)?,
 ) {
     val missed = state.missedCard
     val title = when (state.gameOverReason) {
@@ -224,6 +227,12 @@ private fun GameOverContent(
             )
         }
 
+        val tip = missed?.let { TeachingTips.forNumber(it.value) }
+        if (tip != null) {
+            Spacer(Modifier.height(16.dp))
+            TeachingTipCard(tip = tip)
+        }
+
         Spacer(Modifier.height(24.dp))
         Button(
             onClick = onRestart,
@@ -241,6 +250,15 @@ private fun GameOverContent(
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp,
             )
+        }
+        if (onHome != null) {
+            TextButton(onClick = onHome, modifier = Modifier.testTag("gameOverHome")) {
+                Text(
+                    text = stringResource(R.string.main_menu),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = PrimeTextMuted,
+                )
+            }
         }
     }
 }

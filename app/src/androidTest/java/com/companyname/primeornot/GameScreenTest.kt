@@ -68,6 +68,7 @@ class GameScreenTest {
             PrimeOrNotTheme {
                 GameScreen(
                     state = GameUiState(
+                        phase = GamePhase.Playing,
                         card = GameCard(97),
                         nextCard = GameCard(91),
                         remainingMs = 5_000,
@@ -90,6 +91,7 @@ class GameScreenTest {
             PrimeOrNotTheme {
                 GameScreen(
                     state = GameUiState(
+                        phase = GamePhase.Playing,
                         card = GameCard(97),
                         nextCard = GameCard(91),
                         remainingMs = 5_000,
@@ -112,6 +114,7 @@ class GameScreenTest {
             PrimeOrNotTheme {
                 GameScreen(
                     state = GameUiState(
+                        phase = GamePhase.Playing,
                         card = GameCard(97),
                         nextCard = GameCard(91),
                         remainingMs = 5_000,
@@ -283,10 +286,9 @@ class GameScreenTest {
     }
 
     @Test
-    fun privacyOptionsButtonIsOnlyShownOnTheReadyScreenWhenProvided() {
-        var onPrivacyOptions by mutableStateOf<(() -> Unit)?>(null)
+    fun readyScreenOffersAnExitToTheMainMenu() {
+        var exited = false
         var phase by mutableStateOf(GamePhase.Ready)
-        var clicked = false
 
         compose.setContent {
             PrimeOrNotTheme {
@@ -300,21 +302,46 @@ class GameScreenTest {
                     ),
                     onSwipe = {},
                     onRestart = {},
-                    onPrivacyOptions = onPrivacyOptions,
+                    onExit = { exited = true },
                 )
             }
         }
 
-        compose.onNodeWithTag("privacyOptions").assertDoesNotExist()
-
-        compose.runOnIdle {
-            onPrivacyOptions = { clicked = true }
-        }
-        compose.onNodeWithTag("privacyOptions").assertIsDisplayed()
-        compose.onNodeWithTag("privacyOptions").performClick()
-        compose.runOnIdle { assertTrue(clicked) }
+        compose.onNodeWithTag("exitRun").assertIsDisplayed()
+        compose.onNodeWithTag("exitRun").performClick()
+        compose.runOnIdle { assertTrue(exited) }
 
         compose.runOnIdle { phase = GamePhase.Playing }
-        compose.onNodeWithTag("privacyOptions").assertDoesNotExist()
+        compose.onNodeWithTag("exitRun").assertDoesNotExist()
+    }
+
+    @Test
+    fun gameOverShowsATeachingTipAndAMainMenuAction() {
+        var wentHome = false
+        compose.setContent {
+            PrimeOrNotTheme {
+                GameScreen(
+                    state = GameUiState(
+                        phase = GamePhase.GameOver,
+                        card = GameCard(91),
+                        nextCard = GameCard(97),
+                        score = 12,
+                        bestScore = 21,
+                        remainingMs = 2_000,
+                        timeLimitMs = 5_000,
+                        gameOverReason = GameOverReason.WrongGuess,
+                        missedCard = GameCard(91),
+                    ),
+                    onSwipe = {},
+                    onRestart = {},
+                    onExit = { wentHome = true },
+                )
+            }
+        }
+
+        compose.onNodeWithTag("teachingTip").assertIsDisplayed()
+        compose.onNodeWithTag("gameOverHome").assertIsDisplayed()
+        compose.onNodeWithTag("gameOverHome").performClick()
+        compose.runOnIdle { assertTrue(wentHome) }
     }
 }

@@ -4,6 +4,8 @@ import com.companyname.primeornot.game.GameCard
 import com.companyname.primeornot.game.GameRules
 
 enum class GamePhase {
+    /** No run is loaded; the app is on another screen. */
+    Idle,
     Ready,
     Playing,
     GameOver,
@@ -15,7 +17,8 @@ enum class GameOverReason {
 }
 
 data class GameUiState(
-    val phase: GamePhase = GamePhase.Playing,
+    val phase: GamePhase = GamePhase.Idle,
+    val sessionId: String = "",
     val card: GameCard? = null,
     val nextCard: GameCard? = null,
     val score: Int = 0,
@@ -31,7 +34,8 @@ data class GameUiState(
     val fastestAnswerMs: Long? = null,
     val isNewBest: Boolean = false,
     val dailyStreak: Int = 0,
-    val todayBest: Int = 0,
+    /** True when a saved run was restored and is waiting on the ready gate. */
+    val isResumed: Boolean = false,
 ) {
     val timeFraction: Float
         get() = if (timeLimitMs <= 0L) 0f else (remainingMs.toFloat() / timeLimitMs).coerceIn(0f, 1f)

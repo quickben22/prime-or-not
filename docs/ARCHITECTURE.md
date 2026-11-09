@@ -1,34 +1,48 @@
 # Prime or Not Architecture
 
-A single-screen, native Android game built with Kotlin and Jetpack Compose. The
-player swipes number cards: right for prime, left for not prime. Correct guesses
-extend the run and add a point; the first wrong guess or timeout ends it.
+A native Android game built with Kotlin and Jetpack Compose. The player swipes
+number cards in **Classic**: right for prime, left for not prime. Correct guesses
+extend the run and add a point; the first wrong guess or timeout ends it. A
+five-card, no-pressure **Practice** mode and a **My Records** screen sit
+alongside it.
 
 ## Module layout
 
 ```
 com.companyname.primeornot
-├── MainActivity.kt        edge-to-edge host, ViewModel + audio + ad consent
+├── MainActivity.kt        edge-to-edge host, ViewModels + audio + ad consent
 ├── ads/
-│   └── BannerAd.kt        anchored adaptive AdMob banner, retry screen only
+│   └── BannerAd.kt        anchored adaptive AdMob banner, Classic game-over only
 ├── audio/
 │   └── SoundPlayer.kt     SoundPool wrapper, loads res/raw samples
 ├── game/                  pure Kotlin, no Android imports — unit-testable
 │   ├── PrimeChecker.kt    sieve ≤ 100k, trial-division fallback, factorization
 │   ├── GameCard.kt        value + isPrime
 │   ├── Guess.kt           Prime | NotPrime
-│   ├── GameRules.kt       tiers, time limits, correctness
-│   └── CardDeck.kt        50/50 deck generation with no repeats
+│   ├── GameRules.kt       tiers, time limits, correctness, max Classic number
+│   ├── CardDeck.kt        50/50 deck generation with no repeats
+│   └── PracticeDeck.kt    five-card Practice composition + answer mapping
 ├── data/
-│   ├── ScoreStore.kt      stats (best / today / daily streak) + DataStore impl
-│   └── DailyStreak.kt     pure streak arithmetic + epoch-day helper
+│   ├── GameStore.kt       GameStore interface + versioned DataStore impl
+│   ├── Models.kt          ClassicRecords, CompletedGame, ActiveClassicSession
+│   ├── RecordCodec.kt     pipe-delimited recent-games/session codec
+│   └── DailyStreak.kt     local CalendarDay + pure streak arithmetic
 └── ui/
+    ├── AppRoot.kt         screen state machine, back/abandon dialogs, ads
+    ├── AppViewModel.kt    screen, records, active session, onboarding decision
+    ├── HomeScreen.kt      menu, resume card, best score and daily streak
+    ├── PrimeLogo.kt       shared green 1||0 mark for Home and the Ready card
+    ├── MyRecordsScreen.kt four-section Classic records presentation
+    ├── HowToPlayScreen.kt onboarding copy, rules and first Practice launch
+    ├── PracticeScreen.kt  five-card Practice round and completion screen
+    ├── PracticeViewModel.kt isolated Practice state; onboarding flag only
+    ├── TeachingTips.kt    reusable divisibility tips + shared tip composable
     ├── GameUiState.kt     phase, cards, score, timer, run stats, derived metrics
     ├── GameEffect.kt      one-shot feedback (swipe, correct, wrong, new best…)
-    ├── GameViewModel.kt   round state machine, timer, effects, stats
+    ├── GameViewModel.kt   Classic state machine, timer, effects, persistence
     ├── GameScreen.kt      glass HUD, glow, card stack, +1, banner, confetti
     ├── SwipeCard.kt       drag physics, deal animation, shake, stamps, a11y
-    ├── GameOverPanel.kt   run summary, restart, optional bottom ad slot
+    ├── GameOverPanel.kt   run summary, teaching tip, restart/menu, ad slot
     └── theme/Theme.kt     dark Material 3 scheme, tabular numeric styles
 ```
 
@@ -37,10 +51,22 @@ The old XML layouts, `GameActivity`, `GameEngine`, `GameRepository`,
 gone. The ViewModel replaces the Activity as the owner of the countdown, so
 rotation cannot reset a card or a timer.
 
-## Round lifecycle
+## Navigation and round lifecycle
 
-`GamePhase` is `Ready → Playing → GameOver`. A fresh launch (and every restart
-from the game-over panel) begins in `Ready`: the first card is already drawn but
+The app opens on `Home`. Five destinations are held in `AppUiState.screen`:
+`Home`, `Classic`, `Practice`, `HowToPlay` and `Records`. `AppRoot` is a small
+explicit state machine rather than Navigation Compose, because the transition
+rules (abandon, resume, onboarding) are easier to read in one place.
+
+On first launch, a missing `onboardingComplete` flag opens How to Play and then
+the onboarding Practice session. Reaching the end of that five-card session —
+answered or skipped — writes the flag. Opening Practice from the menu never
+touches it. Existing installations are migrated with `onboardingComplete = true`
+as soon as any prior play is detected.
+
+`GamePhase` is `Idle → Ready → Playing → GameOver`. `Idle` means no Classic run
+is loaded (the app is on another screen). A fresh Classic run and every restart
+from the game-over panel begin in `Ready`: the first card is already drawn but
 face down behind a "tap to start" card, and the countdown is loaded but not
 running. This avoids burning the clock while the first frame is still being
 drawn, and lets the player choose when the round begins.
@@ -49,6 +75,12 @@ drawn, and lets the player choose when the round begins.
 foreground-only job: pausing cancels it with the remaining time intact, resuming
 re-schedules it from that value. `restart()` skips the ready gate (the player is
 already engaged) and drops straight into `Playing`.
+
+Each run has a unique `sessionId`. The active run is saved after every answer
+and on `onPause`, then restored behind the paused `Ready` gate with
+`isResumed = true`. Home shows a Resume/Discard card for it. Back from
+`Ready`/`Playing` opens an abandon confirmation; a confirmed abandon and a
+discarded saved run clear the session without recording a completed game.
 
 ## Game rules
 
@@ -68,6 +100,13 @@ already engaged) and drops straight into `Playing`.
 - **Explanation:** the game-over panel shows the missed card's factorization,
   e.g. `91 = 7 × 13`, or `97 is prime` on a timeout, plus best streak, accuracy,
   fastest answer and how many correct answers would beat the record.
+- **Range:** Classic tops out at `GameRules.MAX_CLASSIC_NUMBER` (9,999), so every
+  prime divisor is at most 97. Teaching content is generated from that bound and
+  stays correct for the whole game.
+- **Practice:** exactly five distinct numbers from 1–100, at least two primes and
+  two composites, exactly one trap composite (9, 15, 21, 25, 27, 49 or 91), and
+  1 only ever as the fifth card. The onboarding deck always includes 1; menu
+  decks include it about half the time. There is no timer, score, streak or ad.
 
 ## Data flow
 
@@ -97,22 +136,45 @@ is why it is a broadcast flow and not a channel: two consumers each see every
 event. Events are `Swipe`, `Correct(streak)`, `Wrong`, `NewBest`, `TierUp(tier)`,
 `Milestone(score)` and `Tick` (one per second inside the last two seconds).
 
-`ScoreStore` owns persistence: a single DataStore holds `best_score`,
-`today_score`, `today_epoch_day`, `streak_days` and `last_epoch_day`, exposed as
-`stats: Flow<ScoreStats(best, todayBest, dailyStreak)>`. `registerVisit()` runs
-once per ViewModel creation and advances or resets the daily streak via the pure
-`DailyStreak.next(current, lastPlayedDay, today)`. Day boundaries come from
-`epochDayOf(millis)` — integer UTC days from an injectable clock, which avoids
-`java.time` (API 26 at minSdk 24) and keeps the streak unit-testable. The
-ViewModel takes `ScoreStore` as a constructor dependency, so tests use an
-in-memory fake and never touch disk.
+`GameStore` owns persistence: one DataStore file (`prime_or_not_scores`) with an
+explicit `schema_version`. `ClassicRecords` exposes the best score, longest
+correct streak, lifetime totals, current/longest daily streak, the last 20
+completed games (newest first) and the onboarding flag. `ActiveClassicSession`
+holds the in-progress run. Scalar values are Preferences keys; the recent-games
+list and active session are compact pipe-delimited records handled by
+`RecordCodec`, whose decoders skip malformed lines instead of crashing.
+
+`migrateIfNeeded()` upgrades version-1 installations: old `streak_days` becomes
+`longestDailyStreak`, and it stays the current streak only when the stored
+`last_epoch_day` is today or yesterday. `completeClassicGame()` writes the
+completed game, updates totals, applies the daily-streak rule and clears the
+active session in a single atomic edit. A session id already present in the
+records is ignored, so retries and repeated completion callbacks cannot
+duplicate a game. A completed game only advances the daily streak when it has
+answered at least `STREAK_QUALIFYING_ANSWERS` (5) cards, and only once per local
+calendar day.
+
+`DailyStreak` uses a local `CalendarDay` and a time-zone-independent day number,
+so "yesterday" remains one day away across daylight-saving changes without
+`java.time` (API 26 at minSdk 24). A missed calendar day resets the displayed
+current streak while the longest streak is kept permanently. The ViewModel takes
+`GameStore` as a constructor dependency, so tests use an in-memory fake and never
+touch disk.
 
 ## UI
 
-- In `Ready` the stack is replaced by a face-down start card (accent `P`,
-  "TAP TO START", direction hints); tapping it calls `begin()`. When UMP says
-  privacy options are required, a muted "Privacy options" text button under the
-  swipe hint reopens the consent form; it is absent everywhere else.
+- In `Ready` the stack is replaced by a face-down start card (the green `1||0`
+  mark, "TAP TO START", direction hints); tapping it calls `begin()`. A resumed run
+  says "TAP TO CONTINUE" and keeps its saved clock paused. A rotating teaching
+  tip sits under the swipe hint, and a small "Main menu" action (or system back)
+  opens the abandon confirmation.
+- Home shows the Classic card with the stored best score and current daily
+  streak, a Resume/Discard card when a session exists, and tiles for Practice,
+  How to Play and My Records. The privacy-options entry point is also here (and
+  on How to Play) when UMP requires it.
+- My Records is Classic-only and split into four sections: personal records,
+  overall statistics, daily progress and the last 20 completed games. Accuracy
+  is shown to one decimal place, or `—` before any number has been answered.
 - The card stack is three deep: `state.card` on top, `state.nextCard` peeking above
   it at 0.96 scale, and a blank surface at 0.92, each nudged up a few dp so the
   deck reads as endless.
@@ -137,12 +199,12 @@ in-memory fake and never touch disk.
 - TalkBack gets a card description plus "Guess prime"/"Guess not prime" custom
   actions.
 - The game-over panel is a scrim + surface that springs in with a slight
-  overshoot; it shows the answer, score/best, best streak, accuracy, fastest
-  answer and "N more to beat your best". The restart button is the only way
-  out, so the final card's explanation stays readable. The panel is laid out in
-  a `weight(1f)` area so an optional banner slot can sit below it without ever
-  moving or overlapping the summary; its content is `verticalScroll`-able, so a
-  short landscape viewport or a large font scale clips nothing.
+  overshoot; it shows the answer, a tip explaining the missed number, best
+  streak, accuracy, fastest answer, "N more to beat your best", Try again and
+  Main menu. The panel is laid out in a `weight(1f)` area so the optional Classic
+  banner can sit below it without ever moving or overlapping the summary; its
+  content is `verticalScroll`-able, so a short landscape viewport or a large
+  font scale clips nothing.
 - Sounds are synthesised WAVs in `res/raw` (`tools/generate_sfx.ps1` regenerates
   them): whoosh on a commit, ding that rises in pitch with the streak, low thud
   on a miss, click in the last two seconds, arpeggio on tier-up/new best/
@@ -151,8 +213,10 @@ in-memory fake and never touch disk.
 
 ## Ads
 
-Monetisation is limited to the retry screen. `Ready` and `Playing` render no ad
-composables at all, so a 5–7 s round is never interrupted or shortened.
+Monetisation is limited to the Classic game-over screen. `Home`, `Ready`,
+`Playing`, `Practice`, `How to Play` and `My Records` render no ad composables at
+all, so a 5–7 s round is never interrupted or shortened and Practice stays
+ad-free.
 
 - `GameScreen(gameOverAd = …)` takes an optional slot and forwards it to
   `GameOverPanel(bottomContent = …)`. Both default to `null`, which is why
@@ -170,8 +234,8 @@ composables at all, so a 5–7 s round is never interrupted or shortened.
   `canRequestAds()` is true, so the SDK stays dormant when the user declines.
   A failed consent update re-reads the last known decision instead of silently
   disabling ads for the session.
-- When `privacyOptionsRequirementStatus` is `REQUIRED` (EEA/UK), the ready
-  screen shows a small "Privacy options" button that reopens the UMP form via
+- When `privacyOptionsRequirementStatus` is `REQUIRED` (EEA/UK), Home and How to
+  Play show a small "Privacy options" link that reopens the UMP form via
   `showPrivacyOptionsForm`; consent state — and the banner slot — is
   re-evaluated when the form is dismissed.
 - Configuration: `play-services-ads` 25.5.0, `user-messaging-platform` 4.0.0,
@@ -191,22 +255,29 @@ composables at all, so a 5–7 s round is never interrupted or shortened.
 ## Testing
 
 - `PrimeCheckerTest` — primes, composites, values below 2, above the sieve
-  limit, factorization and its formatting.
+  limit, factorization and its formatting, `primesUpTo` and
+  `smallestPrimeFactor`.
 - `CardDeckTest` — tier ranges, no repeats, answer/type consistency, ~50/50
   prime ratio, the 100+ odd/non-multiple-of-5 rule, and easy composites still
   present in the 2–99 tier.
 - `GameRulesTest` — tier thresholds, time limits, correctness mapping.
-- `DailyStreakTest` — first visit, same day, yesterday, longer gap, epoch days.
+- `DailyStreakTest` — first qualifying game, same day, yesterday, longer gap,
+  displayed expiry, local calendar-day round trips and time-zone handling.
+- `RecordCodecTest` — active-session round trip, malformed input, newest-first
+  recent games, the 20-game cap, accuracy and the streak threshold.
+- `PracticeDeckTest` — 500 generated decks against every composition rule, trap
+  validity, answer mapping for 1–100, and the 97 / 9,999 prime-divisor bound.
 - `GameViewModelTest` — score/advance, wrong-guess end, timeout end, restart,
-  best-score recording, ready gate, pause/resume, stats collection, streak
-  bookkeeping, effect emission, one-shot new best, tier promotion, fastest
-  answer (virtual time via `StandardTestDispatcher`). 35 tests total across the
-  five unit suites.
+  best-score recording, ready gate, pause/resume, records collection, streak
+  bookkeeping and daily thresholds, abandon without recording, session
+  persistence/resume, duplicate prevention, effect emission, one-shot new best,
+  tier promotion, fastest answer (virtual time via `StandardTestDispatcher`).
+  55 tests total across the seven unit suites.
 - `GameScreenTest` — instrumented Compose tests for the HUD, ready card,
   game-over factorization and run summary, NEW BEST/streak/daily chips, the
-  retry-only ad slot, the conditional privacy-options button, and
-  right/left/short swipe gestures. 10 tests, run via `connectedDebugAndroidTest`
-  or `am instrument` against a single device.
+  retry-only ad slot, the ready-screen exit action, the game-over teaching
+  tip/Main menu action, and right/left/short swipe gestures. 11 tests, run via
+  `connectedDebugAndroidTest` or `am instrument` against a single device.
 
 ## Build
 
@@ -238,7 +309,7 @@ escape hatch. See [`README.md`](../README.md#admob-setup).
 ## Release
 
 The Play listing is `Prime or Not` / `com.companyname.primeornot`, version
-`2.0.0` (`versionCode 3`). `app/build.gradle.kts` keeps both version values as
+`2.1.0` (`versionCode 5`). `app/build.gradle.kts` keeps both version values as
 constants and reads the 2020 upload key from `local.properties` (never
 committed):
 
@@ -249,15 +320,17 @@ committed):
   upload certificate.
 
 The launcher icon is an adaptive icon (`mipmap-anydpi-v26`) with a monochrome
-layer, plus legacy PNG mipmaps for API 24–25. The public privacy policy,
+layer, plus legacy PNG mipmaps for API 24–25. Its `1||0` glyphs sit on the
+`#00C2A8` app accent, matching `ui/PrimeLogo.kt`. The public privacy policy,
 `app-ads.txt` and store copy live under `docs/`; see
 [`PLAY_RELEASE.md`](PLAY_RELEASE.md) for the Signing, AdMob and Play Console
 runbook.
 
 ## Possible next steps
 
-- A mute toggle persisted alongside the score stats.
-- Persist the in-progress run across process death if sessions should survive.
-- Per-tier leaderboards or a run history if Room becomes worth the dependency.
+- A mute toggle persisted alongside the records.
+- Per-tier leaderboards if Room becomes worth the dependency.
+- Optional Daily 10 mode; it would need its own records section and must stay
+  out of the Classic statistics.
 - Reset to a dedicated upload key (the current one is shared with a 2019
   project; Play App Signing makes this safe but it requires a Play-side reset).

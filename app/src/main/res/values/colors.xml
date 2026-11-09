@@ -1,5 +1,4 @@
 <resources>
-    <!-- Kept for the launcher vector drawable; Compose colors live in ui/theme. -->
+    <!-- Window background; the launcher mark itself is a bitmap in drawable-xxxhdpi. -->
     <color name="prime_background">#101820</color>
-    <color name="prime_accent">#00C2A8</color>
 </resources>

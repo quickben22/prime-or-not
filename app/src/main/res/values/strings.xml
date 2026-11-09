@@ -8,7 +8,10 @@
     <string name="not_prime_label">NOT PRIME</string>
     <string name="tap_to_start">TAP TO START</string>
     <string name="tap_to_start_hint">Five seconds on the clock</string>
+    <string name="tap_to_continue">TAP TO CONTINUE</string>
+    <string name="tap_to_continue_hint">Your saved clock is paused</string>
     <string name="privacy_options">Privacy options</string>
+    <string name="main_menu">Main menu</string>
 
     <string name="game_over_wrong_title">Wrong guess</string>
     <string name="game_over_timeout_title">Out of time</string>
@@ -45,4 +48,94 @@
         <item quantity="one">%1$d more to beat your best</item>
         <item quantity="other">%1$d more to beat your best</item>
     </plurals>
+
+    <!-- Main menu -->
+    <string name="home_tagline">Spot the prime. Beat your best.</string>
+    <string name="home_classic">PLAY CLASSIC</string>
+    <string name="home_classic_hint">Swipe right for prime, left for not prime</string>
+    <string name="home_practice">PRACTICE</string>
+    <string name="home_practice_hint">Five cards · no timer</string>
+    <string name="home_how_to_play">HOW TO PLAY</string>
+    <string name="home_my_records">MY RECORDS</string>
+    <string name="home_resume_title">RESUME RUN</string>
+    <string name="home_resume_score">Score %1$d · %2$d answered</string>
+    <string name="resume">RESUME</string>
+    <string name="discard">DISCARD</string>
+
+    <string name="resume_dialog_title">You have a run in progress</string>
+    <string name="resume_dialog_body">Continue the saved run, or discard it and start fresh.</string>
+    <string name="start_new_run">Start new run</string>
+    <string name="cancel">Cancel</string>
+
+    <string name="discard_dialog_title">Discard saved run?</string>
+    <string name="discard_dialog_body">The saved run will be removed and will not count as a completed game.</string>
+
+    <string name="abandon_dialog_title">Abandon this run?</string>
+    <string name="abandon_dialog_body">The current run will be discarded and will not be recorded as a completed game.</string>
+    <string name="abandon">Abandon</string>
+
+    <!-- My Records -->
+    <string name="records_title">MY RECORDS</string>
+    <string name="records_subtitle">Classic mode</string>
+    <string name="section_personal_records">PERSONAL RECORDS</string>
+    <string name="section_overall_stats">OVERALL STATISTICS</string>
+    <string name="section_daily_progress">DAILY PROGRESS</string>
+    <string name="section_recent_games">RECENT GAMES</string>
+    <string name="record_best_score">BEST CLASSIC SCORE</string>
+    <string name="record_longest_streak">LONGEST CORRECT STREAK</string>
+    <string name="stat_games_completed">GAMES COMPLETED</string>
+    <string name="stat_correct">CORRECT</string>
+    <string name="stat_incorrect">INCORRECT</string>
+    <string name="stat_answered">NUMBERS ANSWERED</string>
+    <string name="stat_accuracy">ACCURACY</string>
+    <string name="progress_current_streak">CURRENT STREAK</string>
+    <string name="progress_longest_streak">LONGEST STREAK</string>
+    <plurals name="streak_days">
+        <item quantity="one">%1$d day</item>
+        <item quantity="other">%1$d days</item>
+    </plurals>
+    <string name="recent_empty">Complete a Classic run and it will appear here.</string>
+    <string name="recent_score">Score %1$d</string>
+    <string name="recent_answers">%1$d correct · %2$d incorrect</string>
+    <string name="records_back">Back</string>
+
+    <!-- How to Play -->
+    <string name="how_title">HOW TO PLAY</string>
+    <string name="how_intro">Every card shows one number. Decide whether it is prime, composite, or neither.</string>
+    <string name="how_prime_title">PRIME NUMBERS</string>
+    <string name="how_prime_body">A prime is a whole number greater than 1 with exactly two positive divisors: 1 and itself.</string>
+    <string name="how_prime_examples">Examples: 2, 3, 5, 7, 11</string>
+    <string name="how_composite_title">COMPOSITE NUMBERS</string>
+    <string name="how_composite_body">A composite is a whole number greater than 1 with more than two positive divisors.</string>
+    <string name="how_composite_examples">Examples: 4, 6, 8, 9, 10</string>
+    <string name="how_neither_title">NEITHER PRIME NOR COMPOSITE</string>
+    <string name="how_neither_body">The number 1 has only one positive divisor, itself. It is neither prime nor composite.</string>
+    <string name="how_play_title">HOW A ROUND WORKS</string>
+    <string name="how_play_body">In Classic, swipe right for prime and left for not prime. A correct answer adds a point; a wrong answer or a timeout ends the run.</string>
+    <string name="how_practice_body">Practice has five cards, no timer and no score. Answer, skip, or leave at any time.</string>
+    <string name="how_start_practice">START PRACTICE</string>
+    <string name="how_got_it">GOT IT</string>
+    <string name="how_back">Back</string>
+
+    <!-- Practice -->
+    <string name="practice_title">PRACTICE</string>
+    <string name="practice_card_progress">CARD %1$d OF %2$d</string>
+    <string name="practice_prime">PRIME</string>
+    <string name="practice_composite">COMPOSITE</string>
+    <string name="practice_neither">NEITHER</string>
+    <string name="practice_skip">SKIP CARD</string>
+    <string name="practice_next">NEXT CARD</string>
+    <string name="practice_finish">FINISH</string>
+    <string name="practice_correct">CORRECT!</string>
+    <string name="practice_incorrect">NOT QUITE</string>
+    <string name="practice_feedback_prime">%1$d is prime: its only positive divisors are 1 and itself.</string>
+    <string name="practice_feedback_composite">%1$d is composite: %2$s.</string>
+    <string name="practice_feedback_neither">1 has only one positive divisor, so it is neither prime nor composite.</string>
+    <string name="practice_complete_title">PRACTICE COMPLETE</string>
+    <string name="practice_complete_body">You finished all five cards. You are ready for Classic.</string>
+    <string name="practice_again">PRACTICE AGAIN</string>
+    <string name="practice_play_classic">PLAY CLASSIC</string>
+    <string name="practice_back_home">MAIN MENU</string>
+    <string name="practice_exit">Exit practice</string>
+    <string name="practice_no_pressure">No timer · no score · no streak</string>
 </resources>

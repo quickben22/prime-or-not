@@ -15,6 +15,7 @@ val PrimeBackgroundTop = Color(0xFF16222B)
 val PrimeSurface = Color(0xFF1B2730)
 val PrimeTrack = Color(0xFF2D3A42)
 val PrimeAccent = Color(0xFF00C2A8)
+
 val PrimePositive = Color(0xFF62F2C2)
 val PrimeNegative = Color(0xFFFF7A90)
 val PrimeTextPrimary = Color(0xFFF7F8FA)

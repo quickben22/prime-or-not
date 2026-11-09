@@ -7,28 +7,35 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.android.gms.ads.MobileAds
 import com.google.android.ump.ConsentInformation
 import com.google.android.ump.ConsentRequestParameters
 import com.google.android.ump.UserMessagingPlatform
-import com.companyname.primeornot.ads.BannerAd
 import com.companyname.primeornot.audio.SoundPlayer
+import com.companyname.primeornot.data.DataStoreGameStore
+import com.companyname.primeornot.data.GameStore
+import com.companyname.primeornot.ui.AppRoot
+import com.companyname.primeornot.ui.AppViewModel
 import com.companyname.primeornot.ui.GameEffect
-import com.companyname.primeornot.ui.GameScreen
 import com.companyname.primeornot.ui.GameViewModel
 import com.companyname.primeornot.ui.theme.PrimeOrNotTheme
 import kotlinx.coroutines.flow.collect
 
 class MainActivity : ComponentActivity() {
 
-    private val viewModel: GameViewModel by viewModels { GameViewModel.factory(this) }
+    private val gameStore: GameStore by lazy { DataStoreGameStore(applicationContext) }
+
+    private val gameViewModel: GameViewModel by viewModels {
+        GameViewModel.factory(gameStore)
+    }
+    private val appViewModel: AppViewModel by viewModels {
+        AppViewModel.factory(gameStore)
+    }
+
     private var soundPlayer: SoundPlayer? = null
 
     /** Set by the UMP callbacks; the retry banner is composed only when true. */
@@ -50,10 +57,8 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             PrimeOrNotTheme {
-                val state by viewModel.state.collectAsStateWithLifecycle()
-
                 LaunchedEffect(Unit) {
-                    viewModel.effects.collect { effect ->
+                    gameViewModel.effects.collect { effect ->
                         val player = soundPlayer ?: return@collect
                         when (effect) {
                             GameEffect.Swipe -> player.playSwipe()
@@ -67,17 +72,11 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                GameScreen(
-                    state = state,
-                    onSwipe = viewModel::onSwipe,
-                    onRestart = viewModel::restart,
-                    onStart = viewModel::begin,
-                    effects = viewModel.effects,
-                    gameOverAd = if (canRequestAds) {
-                        { BannerAd(Modifier.fillMaxWidth()) }
-                    } else {
-                        null
-                    },
+                AppRoot(
+                    store = gameStore,
+                    appViewModel = appViewModel,
+                    gameViewModel = gameViewModel,
+                    canRequestAds = canRequestAds,
                     onPrivacyOptions = if (privacyOptionsRequired) {
                         ::showPrivacyOptions
                     } else {
@@ -138,11 +137,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        viewModel.onResume()
+        gameViewModel.onResume()
     }
 
     override fun onPause() {
-        viewModel.onPause()
+        gameViewModel.onPause()
         super.onPause()
     }
 

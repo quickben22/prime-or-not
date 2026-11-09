@@ -6,7 +6,7 @@ The next action is uploading `app/build/outputs/bundle/release/app-release.aab`
 to Internal testing (§8). After that: smoke test, Closed testing, Production,
 and the App content forms.
 
-Last updated: 26 October 2026.
+Last updated: 9 November 2026.
 
 This file records everything that was changed to turn the local prototype into a
 Play submission, why each change was made, and the exact steps left for a human
@@ -21,7 +21,7 @@ in Play Console and AdMob.
 | Play listing | `PRIME OR NOT` (existing app, do not create a new one) |
 | Display name | **Prime or Not** |
 | Package / applicationId | `com.companyname.primeornot` — permanent |
-| This upload | `versionCode 3`, `versionName 2.0.0` |
+| This upload | `versionCode 5`, `versionName 2.1.0` |
 | Previous uploads | `versionCode 2` / `1.1` (Closed testing – Alpha), `versionCode 1` / `1.0` (Internal testing) |
 | minSdk / targetSdk / compileSdk | 24 / 37 / 37 |
 | Category | Games › Puzzle |
@@ -29,8 +29,10 @@ in Play Console and AdMob.
 
 The package was kept because package names are permanent; it still reads
 `com.companyname.…` from the 2020 Android Studio template, and renaming it
-would create a second app with no install history. `versionName` jumps from 1.1
-to 2.0.0 because this is a full Kotlin/Compose rewrite, not a patch.
+would create a second app with no install history. `versionName` jumped from 1.1
+to 2.0.0 because this is a full Kotlin/Compose rewrite, not a patch; 2.0.1 was
+the 7 November icon change, and 2.1.0 is the Phase 1/2 stability, records,
+Practice and green-brand release.
 
 `versionCode` must keep increasing. It is now a single constant in
 `app/build.gradle.kts` (`appVersionCode` / `appVersionName`) so the manifest,
@@ -93,7 +95,7 @@ recreated, repeat this check before uploading.
 - `validateReleaseSigning` runs before `bundleRelease` and fails when any of the
   four values is blank or the keystore file is missing.
 - `verifyReleaseBundle` builds the bundle, checks the manifest contains
-  `com.companyname.primeornot` and `2.0.0`, then runs `keytool -printcert
+  `com.companyname.primeornot` and the current `appVersionName` (`2.1.0`), then runs `keytool -printcert
   -jarfile` and fails unless the signer is the fingerprint above.
 
 ---
@@ -235,7 +237,7 @@ git push
 
 ### Version and Play metadata
 
-- `versionCode 3`, `versionName 2.0.0`.
+- `versionCode 5`, `versionName 2.1.0`.
 - Release signing config sourced from `local.properties` / Gradle properties /
   environment variables, never committed.
 - `validateReleaseSigning` and `verifyReleaseBundle` tasks (see §2).
@@ -243,15 +245,25 @@ git push
 
 ### Launcher icon
 
-- Added an adaptive icon: `mipmap-anydpi-v26/ic_launcher.xml` and
-  `ic_launcher_round.xml`, with `drawable/ic_launcher_foreground.xml` (accent
-  ring + white "P") and `drawable/ic_launcher_monochrome.xml` for themed icons.
-- Added legacy PNG mipmaps for mdpi–xxxhdpi, downscaled from the 512 px source
-  and masked (rounded square / circle) so API 24–25 launchers get the same mark.
-- `AndroidManifest.xml` now points `android:icon` at `@mipmap/ic_launcher` and
+The mark is the original 2020 Xamarin artwork: black `1||0` glyphs on the app
+accent green `#00C2A8`, taken from `quickben22/PrimeOrNot`,
+`PrimeOrNot.Android/Resources/mipmap-xxxhdpi/launcher_foreground.png` (432 px).
+The ring-and-"P" design was dropped on 7 November 2026; the field was changed
+from red `#FF2F17` to green on 9 November 2026 so the launcher, store artwork,
+site icon and in-app logo match the app accent.
+
+- Adaptive icon: `mipmap-anydpi-v26/ic_launcher.xml` and
+  `ic_launcher_round.xml` use `drawable-xxxhdpi/ic_launcher_foreground.png` (the
+  glyph mask scaled to 68 %, so the `1` and `0` stay inside the 72 dp safe zone)
+  plus `drawable-xxxhdpi/ic_launcher_monochrome.png` for themed icons.
+- Legacy PNG mipmaps for mdpi–xxxhdpi keep the original full-width proportions:
+  square for `ic_launcher`, circular for `ic_launcher_round`, so API 24–25
+  launchers get the same mark.
+- `AndroidManifest.xml` points `android:icon` at `@mipmap/ic_launcher` and
   `android:roundIcon` at `@mipmap/ic_launcher_round`.
-- Removed the old `drawable/ic_prime_tinder.xml`.
-- Background colour resource `values/ic_launcher_background.xml` (`#101820`).
+- Background colour resource `values/ic_launcher_background.xml` (`#00C2A8`).
+- The in-app logo is `ui/PrimeLogo.kt`: the same foreground bitmap over
+  `PrimeAccent`, used by Home and the Classic Ready card.
 
 ### Store artwork (`docs/store/`)
 
@@ -262,9 +274,13 @@ with headless Chrome.
 |---|---|---|
 | `icon-512.png` | 512×512 | Play app icon |
 | `feature-graphic-1024x500.png` | 1024×500 | Play feature graphic |
-| `icon.html`, `icon-source.svg` | — | icon source |
+| `icon.html`, `icon-source.svg` | — | icon source (self-contained: the 432 px glyph mask is embedded as base64 over the `#00C2A8` field) |
 | `feature-graphic.html` | — | feature graphic source |
 | `screenshots/` | 1080×1920 | phone screenshots (see below) |
+
+`icon-512.png` is composed at 512 px from the same glyph mask, not upscaled from
+a smaller bitmap, and is copied unchanged to `docs/site/icon-512.png`. The
+feature graphic uses the same mark; every accent is the app green `#00C2A8`.
 
 ### Privacy site and tooling
 
@@ -277,8 +293,10 @@ with headless Chrome.
   `keystore.properties`, `local.properties` and `upload_cert.der`.
 - `upload_cert.der` was moved out of the repo to `~\.android-keys\`.
 
-No game logic, layout, sound or scoring behaviour was changed in this release
-pass.
+2.1.0 adds resumable Classic sessions, Classic-only records and streak rules,
+onboarding/How to Play, isolated Practice, teaching tips and the rebranded
+green mark. The core swipe, timer and scoring rules are unchanged; see §10 and
+`docs/ARCHITECTURE.md` for the full behaviour.
 
 ---
 
@@ -323,23 +341,27 @@ Local-only release smoke test with sample ads (never upload this):
 
 ### Result of the last run
 
-- `testDebugUnitTest`: **35 tests, 0 failures, 0 skipped** (5 suites).
-- `lintDebug`: **0 errors, 2 warnings** (`AndroidGradlePluginVersion` only —
-  AGP is pinned deliberately, see `docs/ARCHITECTURE.md#build`).
-- `assembleDebug`: debug APK ≈ 17.9 MB, installs and runs on API 35.
+- `testDebugUnitTest`: **55 tests, 0 failures, 0 skipped** (7 suites).
+- `lintDebug`: **0 errors, 9 warnings** — 2 `AndroidGradlePluginVersion`
+  (AGP is pinned deliberately, see `docs/ARCHITECTURE.md#build`),
+  2 `PluralsCandidate`, and 5 `IconLauncherShape` for the intentionally
+  full-bleed legacy square mipmaps.
+- `assembleDebug`: debug APK 18,861,009 bytes, installs and runs on API 35; the
+  green `1||0` mark renders on the launcher and on the in-app start card.
 - `bundleRelease` without AdMob IDs: **fails at `validateReleaseAdIds`**, as
   designed. With the real IDs it builds.
 - `verifyReleaseBundle` with the real IDs: **passed** — package
-  `com.companyname.primeornot`, version `2.0.0` (code 3), signer
-  `2B:41:8C:E6:…:20:84`, 6,917 KiB. The bundle manifest contains
+  `com.companyname.primeornot`, version `2.1.0` (code 5), signer
+  `2B:41:8C:E6:…:20:84`, 7,159 KiB. The bundle manifest contains
   `ca-app-pub-3535032153893847~2009618845`, `classes.dex` contains the banner
   unit `2509721149`, and Google's sample publisher `3940256099942544` appears
   nowhere. SHA-256 of the artifact:
-  `95B5FC3C38FDCD8A9CCE95AC7E82F1EE7E5D5C01226437F662D8E8FC0C41968F`.
+  `615444CFF7276761DA9F56548A8ED4CC3AA8745E2E308701C5211DA3CED562C4`.
 - `verifyReleaseBundle -PALLOW_TEST_ADS=true` (used earlier to prove the signing
   path before the IDs existed): also passed; that test-ad artifact was deleted.
-- `assembleDebugAndroidTest`: builds; `am instrument` on `emulator-5554`
-  (API 35) ran **10/10 `GameScreenTest` cases, OK**, in 16 s.
+- `connectedDebugAndroidTest` on `emulator-5554` (API 35, Pixel 5):
+  **11/11 `GameScreenTest` cases, OK** on 9 November. Home and the Classic
+  Ready card were also inspected on-device with the green mark.
 
 ---
 
@@ -381,6 +403,10 @@ Captured set (all 1080×1920, BEST 2 for continuity):
 | `screenshots/phone-03-wrong.png` | wrong guess, `9 = 3²` |
 | `screenshots/phone-04-timeout.png` | out of time, `71 is prime`, 100% accuracy |
 | `screenshots/phone-05-new-best.png` | NEW BEST, score 2 |
+
+On 9 November 2026 the logo circle in `phone-01-ready.png` was recolored in
+place (centre 540,1019; diameter ≈238 px) rather than recaptured, so the rest of
+the card and the status bar are unchanged.
 
 ---
 
@@ -443,20 +469,20 @@ information — the app requests none of those permissions.
 2. Keep the existing **Play App Signing** setup; do not create a new key.
 3. Under **App bundles → Upload**, select
    `C:\Users\armin\Documents\Prime or not\app\build\outputs\bundle\release\app-release.aab`
-   (7,083,334 bytes, SHA-256
-   `95B5FC3C38FDCD8A9CCE95AC7E82F1EE7E5D5C01226437F662D8E8FC0C41968F`).
+   (7,331,072 bytes, SHA-256
+   `615444CFF7276761DA9F56548A8ED4CC3AA8745E2E308701C5211DA3CED562C4`).
    Upload the AAB, never an APK, and never a build made with
    `-PALLOW_TEST_ADS=true`.
 4. Wait for “bundle uploaded successfully”; the release name fills in as
-   **2.0.0 (3)**. Paste the release notes below.
+   **2.1.0 (5)**. Paste the release notes below.
 5. Resolve any **errors** Play reports. Warnings can be reviewed and accepted.
-6. **Save → Review release**, confirm version **3 (2.0.0)** and the target
+6. **Save → Review release**, confirm version **5 (2.1.0)** and the target
    countries, then **Start rollout to Internal testing → Rollout**.
 7. If **Managed publishing** is enabled, go to **Publishing overview** and click
    **Publish changes**. Internal testing normally goes live in minutes.
 8. **Testers** tab: put your Google account in the list, copy the opt-in URL,
    open it on the phone, accept and install. Confirm the installed version is
-   **2.0.0**.
+   **2.1.0**.
 9. Smoke-test: start screen, several swipes, one wrong answer, one timeout,
    retry, then force-stop and confirm the best score persisted. Test on API 35
    and, if available, API 24.
@@ -464,7 +490,7 @@ information — the app requests none of those permissions.
 **Promotion**
 
 10. **Closed testing → Alpha → Create new release → Add from library**, select
-    `2.0.0 (3)`, and roll out to the existing testers.
+    `2.1.0 (5)`, and roll out to the existing testers.
 11. When production is unlocked: **Production → Create new release**, same
     bundle, staged rollout (e.g. 20% → 100%).
 12. If Play shows **Apply for production access** instead, complete that form
@@ -472,18 +498,17 @@ information — the app requests none of those permissions.
     12-tester rule applies only to personal developer accounts created after
     13 November 2023; this account predates it.
 
-After the upload, **App bundle explorer → version 3** shows the app-signing
+After the upload, **App bundle explorer → version 5** shows the app-signing
 certificate, which intentionally differs from the upload certificate.
 
 ### Release notes (copy/paste)
 
 ```text
-2.0.0
-• Rebuilt from the ground up with Jetpack Compose
-• New launcher icon and refreshed dark theme
-• Faster start, smoother card animations
-• Daily streak, best score and detailed run summary
-• Privacy policy and consent options for personalized ads
+2.1.0
+• Resume or abandon an interrupted Classic run
+• Streak and records now track Classic only
+• Practice mode and teaching tips
+• New green 1||0 icon, store art and start card
 ```
 
 ---
@@ -495,7 +520,7 @@ certificate, which intentionally differs from the upload certificate.
 Fingerprint confirmed, repos pushed, site live. What is left:
 
 1. **Upload `app-release.aab`** — Internal testing → Create new release →
-   upload the AAB → release notes `2.0.0` (§8).
+   upload the AAB → release notes `2.1.0` (§8).
 2. **Smoke-test** the installed build (start, swipes, wrong answer, timeout,
    retry, score persistence).
 3. **Promote** the same bundle to Closed testing → Alpha, then Production.
@@ -521,12 +546,56 @@ URLs are safe to paste into Play now.
 - The old BetsKeeper folder contains the keystore and a plaintext password in
   `AndroidTest3\aab.txt`. It is not publicly findable, but keep it private and
   consider rotating that key too.
-- Persist an in-progress run across process death.
 - Add a mute toggle persisted with the score stats.
 
 ---
 
 ## 10. Work log
+
+### 9 November 2026
+
+**Green brand and Phase 1/2 release**
+
+- Added `ui/PrimeLogo.kt`, a shared mark that draws the `1||0` foreground
+  bitmap over `PrimeAccent` (`#00C2A8`). Home and the Classic Ready card now use
+  it; the red `PrimeMark` constant was removed.
+- Changed the adaptive-icon background to `#00C2A8` and recolored the legacy
+  square/round mipmaps while keeping their glyphs, masks and transparency.
+- Updated `icon-source.svg`/`icon.html`, regenerated `icon-512.png` and copied
+  it to `docs/site/`; converted every red accent in the feature graphic to
+  green and re-rendered `feature-graphic-1024x500.png`.
+- Recolored only the logo circle in `screenshots/phone-01-ready.png` in place
+  (centre 540,1019; diameter ≈238 px), preserving the black glyphs and card.
+- Phase 1/2: resumable/abandonable Classic runs, Classic-only records and
+  streak rules, onboarding/How to Play, isolated Practice mode, teaching tips
+  and the four-section My Records screen. Unit tests: **55 passing**.
+- Version stays `versionCode 5` / `versionName 2.1.0`; this build is still
+  unreleased. Home and the Classic Ready card were checked on
+  `emulator-5554` (API 35), and `connectedDebugAndroidTest` passed **11/11**.
+
+### 7 November 2026
+
+**Launcher icon replaced**
+
+- Swapped the ring-and-"P" mark for the original 2020 Xamarin artwork (black
+  `1||0` on red `#FF2F17`) at the owner's request.
+- Rebuilt the adaptive foreground and monochrome layers from the 432 px source,
+  scaled to 68 % so the digits survive circular/rounded masks.
+- Regenerated legacy `mipmap-{mdpi…xxxhdpi}` icons (square + round) and
+  `docs/store/icon-512.png`, and copied the 512 icon to `docs/site/`.
+- Rewrote `docs/store/icon-source.svg` as a self-contained SVG (base64 glyph
+  mask) and simplified `icon.html` to render it; both verified in headless
+  Chrome.
+- Verified on a Pixel 5 emulator (API 35): the circular launcher mask shows the
+  whole `1||0` with clear margins.
+- Rebuilt `docs/store/feature-graphic-1024x500.png` with the red mark and red
+  accents (source: `feature-graphic.html`, rendered with headless Chrome).
+- Replaced the teal "P" on the in-app start card with a red mark that draws the
+  same adaptive foreground, cropped to the 72 dp circle.
+- Bumped to `versionCode 4` / `versionName 2.0.1`; `verifyReleaseBundle` passed
+  (6,984 KiB, SHA-256 `6626338C…`).
+- Committed and pushed the site icon (`5541aaf`); the live
+  `https://quickben22.github.io/icon-512.png` matches the repo file.
 
 ### 26 October 2026
 

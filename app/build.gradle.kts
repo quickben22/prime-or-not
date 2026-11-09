@@ -13,10 +13,11 @@ val admobTestAppId = "ca-app-pub-3940256099942544~3347511713"
 val admobTestBannerUnitId = "ca-app-pub-3940256099942544/9214589741"
 val admobTestPublisherId = "3940256099942544"
 
-// Single source of truth for the Play upload. versionCode 3 follows the 2020
-// build (1.0 / 1.1) and must increase by at least one for every upload.
-val appVersionCode = 3
-val appVersionName = "2.0.0"
+// Single source of truth for the Play upload. versionCode 3 shipped 2.0.0 and
+// 4 shipped 2.0.1; 5 ships the Phase 1/2 stability, records and Practice work.
+// It must increase by at least one for every upload.
+val appVersionCode = 5
+val appVersionName = "2.1.0"
 
 /**
  * Real ad IDs are machine-specific, so they come from (in order) local.properties,

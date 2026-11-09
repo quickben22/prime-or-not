@@ -1,15 +1,15 @@
 package com.companyname.primeornot.ui
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import com.companyname.primeornot.data.DataStoreScoreStore
-import com.companyname.primeornot.data.ScoreStore
-import com.companyname.primeornot.data.epochDayOf
+import com.companyname.primeornot.data.ActiveClassicSession
+import com.companyname.primeornot.data.CalendarDay
+import com.companyname.primeornot.data.GameStore
 import com.companyname.primeornot.game.CardDeck
+import com.companyname.primeornot.game.GameCard
 import com.companyname.primeornot.game.GameRules
 import com.companyname.primeornot.game.Guess
 import kotlinx.coroutines.Job
@@ -22,16 +22,24 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.TimeZone
+import java.util.UUID
 
 /**
- * Owns the whole round, including the timer, so rotation and process-level
+ * Owns the Classic run, including the timer, so rotation and process-level
  * recomposition never restart a card or reset the countdown.
+ *
+ * Every run has a unique [GameUiState.sessionId]. The run is persisted after
+ * answers, when the app is backgrounded, and cleared exactly once when it ends,
+ * which is what prevents duplicate statistics and accidental completed games.
  */
 class GameViewModel(
-    private val scoreStore: ScoreStore,
+    private val store: GameStore,
     private val deck: CardDeck = CardDeck(),
     private val tickMillis: Long = 50L,
     private val clockMillis: () -> Long = System::currentTimeMillis,
+    private val timeZone: TimeZone = TimeZone.getDefault(),
+    private val idFactory: () -> String = { UUID.randomUUID().toString() },
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(GameUiState())
@@ -50,31 +58,65 @@ class GameViewModel(
     private var bestAtRunStart = 0
 
     init {
-        prepareRun()
-        viewModelScope.launch { scoreStore.registerVisit(epochDayOf(clockMillis())) }
         viewModelScope.launch {
-            scoreStore.stats.collect { stats ->
+            store.records.collect { records ->
+                val today = CalendarDay.today(clockMillis(), timeZone)
                 _state.update { current ->
                     current.copy(
-                        bestScore = maxOf(stats.best, current.bestScore),
-                        todayBest = maxOf(stats.todayBest, current.todayBest),
-                        dailyStreak = maxOf(stats.dailyStreak, current.dailyStreak),
+                        bestScore = maxOf(records.bestScore, current.bestScore),
+                        dailyStreak = records.currentStreakOn(today),
                     )
                 }
                 // Freeze the baseline once the player has scored this run; before
                 // that, a late-arriving record is still the score to beat.
                 if (_state.value.score == 0) {
-                    bestAtRunStart = maxOf(bestAtRunStart, stats.best)
+                    bestAtRunStart = maxOf(bestAtRunStart, records.bestScore)
                 }
             }
         }
     }
 
-    /** Leaves the ready gate and starts the countdown for the first card. */
+    /** Starts a fresh run in the ready gate. The previous saved run must be discarded by the caller. */
+    fun startNewGame() {
+        prepareRun()
+    }
+
+    /** Restores an interrupted run behind the ready gate so the clock stays paused. */
+    fun resume(session: ActiveClassicSession) {
+        timerJob?.cancel()
+        timerJob = null
+        lastTickSecond = -1
+        deck.restoreUsed(session.usedValues)
+        bestAtRunStart = session.bestAtRunStart
+
+        _state.update { current ->
+            GameUiState(
+                phase = GamePhase.Ready,
+                sessionId = session.id,
+                card = GameCard(session.cardValue),
+                nextCard = GameCard(session.nextCardValue),
+                score = session.score,
+                bestScore = maxOf(current.bestScore, session.bestAtRunStart, session.score),
+                remainingMs = session.remainingMs.coerceAtLeast(1L),
+                timeLimitMs = session.timeLimitMs.coerceAtLeast(1L),
+                streak = session.streak,
+                bestStreak = session.bestStreak,
+                cardsSeen = session.cardsSeen,
+                correctCount = session.correct,
+                fastestAnswerMs = session.fastestAnswerMs,
+                isNewBest = session.isNewBest,
+                dailyStreak = current.dailyStreak,
+                isResumed = true,
+            )
+        }
+    }
+
+    /** Leaves the ready gate and starts the countdown for the current card. */
     fun begin() {
         if (_state.value.phase != GamePhase.Ready) return
         bestAtRunStart = maxOf(bestAtRunStart, _state.value.bestScore)
-        _state.update { it.copy(phase = GamePhase.Playing) }
+        _state.update { it.copy(phase = GamePhase.Playing, isResumed = false) }
+        persistSession()
         startTimer()
     }
 
@@ -104,6 +146,7 @@ class GameViewModel(
             snapshot.nextCard ?: deck.nextCard(newScore)
         }
         val upcoming = deck.nextCard(newScore)
+        val nextLimit = GameRules.timeLimitMsFor(nextCard.value)
 
         _state.update {
             it.copy(
@@ -120,7 +163,8 @@ class GameViewModel(
                     .takeIf { value -> value != Long.MAX_VALUE },
                 isNewBest = it.isNewBest || newBest,
                 bestScore = maxOf(it.bestScore, newScore),
-                todayBest = maxOf(it.todayBest, newScore),
+                remainingMs = nextLimit,
+                timeLimitMs = nextLimit,
             )
         }
 
@@ -129,7 +173,8 @@ class GameViewModel(
         if (tierUp) _effects.tryEmit(GameEffect.TierUp(newTier))
         if (newScore in MILESTONES) _effects.tryEmit(GameEffect.Milestone(newScore))
 
-        startTimer(newLimit = GameRules.timeLimitMsFor(nextCard.value))
+        startTimer(newLimit = nextLimit)
+        persistSession()
     }
 
     /** Called from the Activity when the screen becomes interactive. */
@@ -145,6 +190,7 @@ class GameViewModel(
         isForeground = false
         timerJob?.cancel()
         timerJob = null
+        persistSession()
     }
 
     fun restart() {
@@ -152,9 +198,27 @@ class GameViewModel(
         begin()
     }
 
+    /** Explicitly quits the active run without recording it as completed. */
+    fun abandon() {
+        timerJob?.cancel()
+        timerJob = null
+        val sessionId = _state.value.sessionId.takeIf { it.isNotBlank() }
+        _state.update {
+            GameUiState(
+                phase = GamePhase.Idle,
+                // A run that was never recorded must not leave its in-run score
+                // behind as the best to beat in the next run.
+                bestScore = bestAtRunStart,
+                dailyStreak = it.dailyStreak,
+            )
+        }
+        viewModelScope.launch { store.clearActiveSession(sessionId) }
+    }
+
     private fun prepareRun() {
         timerJob?.cancel()
         timerJob = null
+        lastTickSecond = -1
         deck.reset()
         bestAtRunStart = _state.value.bestScore
 
@@ -165,6 +229,7 @@ class GameViewModel(
         _state.update {
             it.copy(
                 phase = GamePhase.Ready,
+                sessionId = idFactory(),
                 card = first,
                 nextCard = upcoming,
                 score = 0,
@@ -178,6 +243,7 @@ class GameViewModel(
                 correctCount = 0,
                 fastestAnswerMs = null,
                 isNewBest = false,
+                isResumed = false,
             )
         }
     }
@@ -221,7 +287,8 @@ class GameViewModel(
 
     private fun endRun(reason: GameOverReason) {
         val snapshot = _state.value
-        if (snapshot.phase == GamePhase.GameOver) return
+        if (snapshot.phase == GamePhase.GameOver || snapshot.phase == GamePhase.Idle) return
+        if (snapshot.sessionId.isBlank()) return
 
         timerJob?.cancel()
         timerJob = null
@@ -233,21 +300,61 @@ class GameViewModel(
                 gameOverReason = reason,
                 missedCard = it.card,
                 bestScore = maxOf(it.bestScore, it.score),
-                todayBest = maxOf(it.todayBest, it.score),
             )
         }
 
         _effects.tryEmit(GameEffect.Wrong)
-        viewModelScope.launch { scoreStore.recordScore(snapshot.score) }
+
+        val completed = ActiveClassicSession(
+            id = snapshot.sessionId,
+            cardValue = snapshot.card?.value ?: 0,
+            nextCardValue = snapshot.nextCard?.value ?: 0,
+            score = snapshot.score,
+            streak = snapshot.streak,
+            bestStreak = snapshot.bestStreak,
+            cardsSeen = snapshot.cardsSeen,
+            correct = snapshot.correctCount,
+            incorrect = (snapshot.cardsSeen - snapshot.correctCount).coerceAtLeast(0),
+            remainingMs = snapshot.remainingMs,
+            timeLimitMs = snapshot.timeLimitMs,
+            bestAtRunStart = bestAtRunStart,
+            fastestAnswerMs = snapshot.fastestAnswerMs,
+            isNewBest = snapshot.isNewBest,
+            usedValues = deck.usedValues(),
+        )
+        viewModelScope.launch { store.completeClassicGame(completed, clockMillis()) }
+    }
+
+    private fun persistSession() {
+        val snapshot = _state.value
+        if (snapshot.phase != GamePhase.Playing || snapshot.sessionId.isBlank()) return
+        val session = ActiveClassicSession(
+            id = snapshot.sessionId,
+            cardValue = snapshot.card?.value ?: return,
+            nextCardValue = snapshot.nextCard?.value ?: return,
+            score = snapshot.score,
+            streak = snapshot.streak,
+            bestStreak = snapshot.bestStreak,
+            cardsSeen = snapshot.cardsSeen,
+            correct = snapshot.correctCount,
+            incorrect = (snapshot.cardsSeen - snapshot.correctCount).coerceAtLeast(0),
+            remainingMs = snapshot.remainingMs,
+            timeLimitMs = snapshot.timeLimitMs,
+            bestAtRunStart = bestAtRunStart,
+            fastestAnswerMs = snapshot.fastestAnswerMs,
+            isNewBest = snapshot.isNewBest,
+            usedValues = deck.usedValues(),
+        )
+        viewModelScope.launch { store.saveActiveSession(session) }
     }
 
     companion object {
         private val MILESTONES = setOf(10, 25, 50)
         private const val TICK_WINDOW_MS = 2_000L
 
-        fun factory(context: Context): ViewModelProvider.Factory = viewModelFactory {
+        fun factory(store: GameStore): ViewModelProvider.Factory = viewModelFactory {
             initializer {
-                GameViewModel(scoreStore = DataStoreScoreStore(context.applicationContext))
+                GameViewModel(store = store)
             }
         }
     }
