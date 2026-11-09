@@ -102,15 +102,18 @@ Upload from `docs/store/`:
 
 Screenshot slots for the upload (in this order):
 
-1. `phone-01-ready.png` — start screen, face-down card, BEST 2
-2. `phone-02-playing.png` — 81 on the card, score 1, full timer
-3. `phone-03-wrong.png` — wrong guess, `9 = 3²`, run summary
-4. `phone-04-timeout.png` — out of time, `71 is prime`, 100% accuracy
-5. `phone-05-new-best.png` — NEW BEST badge with score 2
+1. `phone-01-home.png` — home screen, Play Classic card, BEST 23
+2. `phone-02-ready.png` — classic start card, TAP TO START, BEST 23
+3. `phone-03-playing.png` — card 269, score 14, 14× streak, 6 s timer
+4. `phone-04-practice.png` — practice card 65 with PRIME / COMPOSITE / NEITHER
+5. `phone-05-how-to-play.png` — how to play, prime and composite explained
+6. `phone-06-my-records.png` — records, best 23, 75.1% accuracy, streaks
+7. `phone-07-wrong.png` — wrong guess, 291 = 3 × 97, run summary and tip
+8. `phone-08-new-best.png` — NEW BEST badge with score 24
 
-Captured on the Pixel 5 AVD, 1080 × 1920, status bar in demo mode. Networking
-was off, so no test ad appears in any shot. Do not upload a screenshot that
-contains an ad.
+Captured on the Pixel 5 AVD at 1080 × 1920. The status bar shows only the time
+and battery; networking was off, so no test ad appears in any shot. Do not
+upload a screenshot that contains an ad.
 
 ## Category and tags
 

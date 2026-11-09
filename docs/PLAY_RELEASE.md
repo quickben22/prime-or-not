@@ -414,23 +414,23 @@ reflectively-used `WorkDatabase_Impl.<init>()` constructor.
 Captured on `emulator-5554` (API 35, Pixel 5 AVD). The emulator's native
 1080×2340 is not a valid Play ratio (max 2:1), so the display was temporarily
 set to 1080×1920 and restored afterwards with `wm size reset`. Networking is
-disabled for the game-over shots so the banner never appears in a store image.
+disabled so the banner never appears in a store image.
+
+SystemUI demo mode is **off** for these captures. On this Android 15 image demo
+mode adds a stray "satellite" status icon, so the status bar shows only the real
+clock and battery. Do not re-enter demo mode while capturing.
 
 ```powershell
 $adb="$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
 & $adb shell wm size 1080x1920
 & $adb shell svc wifi disable
 & $adb shell svc data disable
-# status bar: demo mode with clock 09:41 and a full battery
-& $adb shell settings put global sysui_demo_allowed 1
-& $adb shell am broadcast -a com.android.systemui.demo -e command enter
-& $adb shell am broadcast -a com.android.systemui.demo -e command clock -e hhmm 0941
+& $adb shell am broadcast -a com.android.systemui.demo -e command exit
 # ... play to the required state, then:
 & $adb shell screencap -p /sdcard/shot.png
-& $adb pull /sdcard/shot.png docs\store\screenshots\phone-02-playing.png
+& $adb pull /sdcard/shot.png docs\store\screenshots\phone-03-playing.png
 & $adb shell rm /sdcard/shot.png
 # restore
-& $adb shell am broadcast -a com.android.systemui.demo -e command exit
 & $adb shell wm size reset
 & $adb shell svc wifi enable
 & $adb shell svc data enable
@@ -438,19 +438,23 @@ $adb="$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
 
 Files are listed in `docs/store/listing.md` with the order to upload them.
 
-Captured set (all 1080×1920, BEST 2 for continuity):
+Captured set (all 1080×1920, seeded with BEST 23, a 6-day streak and 18 games):
 
 | File | State |
 |---|---|
-| `screenshots/phone-01-ready.png` | start card, TAP TO START |
-| `screenshots/phone-02-playing.png` | card 81, score 1, 5 s timer |
-| `screenshots/phone-03-wrong.png` | wrong guess, `9 = 3²` |
-| `screenshots/phone-04-timeout.png` | out of time, `71 is prime`, 100% accuracy |
-| `screenshots/phone-05-new-best.png` | NEW BEST, score 2 |
+| `screenshots/phone-01-home.png` | home, Play Classic card, BEST 23 |
+| `screenshots/phone-02-ready.png` | start card, TAP TO START |
+| `screenshots/phone-03-playing.png` | card 269, score 14, 14× streak |
+| `screenshots/phone-04-practice.png` | practice card 65, three answer buttons |
+| `screenshots/phone-05-how-to-play.png` | how to play, prime/composite rules |
+| `screenshots/phone-06-my-records.png` | records, BEST 23, 75.1% accuracy |
+| `screenshots/phone-07-wrong.png` | wrong guess, 291 = 3 × 97 |
+| `screenshots/phone-08-new-best.png` | NEW BEST badge, score 24 |
 
-On 9 November 2026 the logo circle in `phone-01-ready.png` was recolored in
-place (centre 540,1019; diameter ≈238 px) rather than recaptured, so the rest of
-the card and the status bar are unchanged.
+All eight were captured from the 2.1.2 release APK in one session, so the status
+bar, colours and copy match. The game states were driven from the active-session
+record in DataStore (`id|card|next|score|…`) because `uiautomator dump` is too
+slow for the five-second timer.
 
 ---
 
@@ -703,8 +707,9 @@ URLs are safe to paste into Play now.
 - Updated `icon-source.svg`/`icon.html`, regenerated `icon-512.png` and copied
   it to `docs/site/`; converted every red accent in the feature graphic to
   green and re-rendered `feature-graphic-1024x500.png`.
-- Recolored only the logo circle in `screenshots/phone-01-ready.png` in place
-  (centre 540,1019; diameter ≈238 px), preserving the black glyphs and card.
+- Recolored only the logo circle in the then-current `phone-01-ready.png` in
+  place (centre 540,1019; diameter ≈238 px), preserving the black glyphs and
+  card. That whole set was later replaced by the fresh 2.1.2 captures in §7.
 - Phase 1/2: resumable/abandonable Classic runs, Classic-only records and
   streak rules, onboarding/How to Play, isolated Practice mode, teaching tips
   and the four-section My Records screen. Unit tests: **55 passing**.
@@ -850,7 +855,7 @@ docs/
     ├── icon-512.png
     ├── feature-graphic-1024x500.png
     ├── icon.html / icon-source.svg / feature-graphic.html
-    └── screenshots/             phone-01…phone-05, 1080×1920
+    └── screenshots/             phone-01…phone-08, 1080×1920
 
 tools/
 ├── generate_sfx.ps1
